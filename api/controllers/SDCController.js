@@ -35,7 +35,8 @@ module.exports = {
                                     ${item.coach.ren_surname},
                                     ${item.coach.ren_givenname}
                                     (${item.coach.ren_preferredname})
-                                    [${item.coach.gender_label}]
+                                    <span class="gender">[${item.coach.gender_label}]</span>
+                                    <span class="position">${item.coach.position_label}</span>
                             `;
                         } else {
                             html += ` none`;
@@ -50,7 +51,8 @@ module.exports = {
                                     ${member.ren_surname},
                                     ${member.ren_givenname}
                                     (${member.ren_preferredname})
-                                    [${member.gender_label}]
+                                    <span class="gender">[${member.gender_label}]</span>
+                                    <span class="position">${member.position_label}</span>
                                 </li>
                             `;
                         });
@@ -69,6 +71,16 @@ module.exports = {
                                 .team {
                                     border-top: 1px solid black;
                                     margin-top: 2em;
+                                }
+                                .gender {
+                                    font-size: .8em;
+                                    padding-left: 1em;
+                                    padding-right: 1em;
+                                }
+                                .position {
+                                    font-size: .9em;
+                                    padding-left: 1em;
+                                    padding-right: 1em;
                                 }
                             </style>
                         </head>
