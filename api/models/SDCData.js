@@ -99,7 +99,9 @@ module.exports = {
                         ON gen.gender_id = genT.gender_id
                         AND genT.language_code = ?
                 
-            `, [langCode], (err, list) => {
+            `, 
+            [langCode, langCode, langCode], 
+            (err, list) => {
                 if (err) reject(err);
                 else if (!list || !list[0]) {
                     reject(new Error('No HRIS data found'));
@@ -168,7 +170,7 @@ module.exports = {
         // Group by gender
         var results = [];
         var byGender = {};
-        teamData.forEach((member) => {
+        teamData.members.forEach((member) => {
             var genderID = member.gender_id;
             byGender[genderID] = byGender[genderID] || {
                 coach: null,
