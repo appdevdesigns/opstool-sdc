@@ -98,7 +98,11 @@ module.exports = {
                     JOIN hris_gender_trans genT
                         ON gen.gender_id = genT.gender_id
                         AND genT.language_code = ?
-                
+                    
+                    JOIN hris_worker w
+                        ON ren.ren_id = w.ren_id
+                        AND w.worker_dateleftchinamin = '1000-01-01'
+                        AND w.worker_terminationdate = '1000-01-01'
             `, 
             [langCode, langCode, langCode], 
             (err, list) => {
