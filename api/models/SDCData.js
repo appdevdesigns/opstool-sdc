@@ -118,7 +118,7 @@ module.exports = {
                     var memberFields = [
                         'ren_id', 'ren_surname', 'ren_givenname', 
                         'ren_preferredname', 'gender_id', 'gender_label',
-                        'position_id', 'position_label',
+                        'position_id', 'position_label', 'team_label',
                     ];
                     
                     // 1st pass
@@ -153,7 +153,7 @@ module.exports = {
                             team.leaders.forEach((leader) => {
                                 var member = _.clone(leader);
                                 member.position_id = 4; // member
-                                member.position_label = 'Derived member';
+                                member.position_label = member.team_label;
                                 member.derived = true;
                                 parentTeam.members.push(member);
                             });
