@@ -47,7 +47,7 @@ module.exports = {
                         `;
                         item.coachee.forEach((member) => {
                             html += `
-                                <li>
+                                <li class="${member.derived ? 'derived' : ''}">
                                     ${member.ren_surname},
                                     ${member.ren_givenname}
                                     (${member.ren_preferredname})
@@ -67,20 +67,36 @@ module.exports = {
                             <style>
                                 body {
                                     font-family: sans-serif;
+                                    max-width: 50em;
+                                    margin: 1em auto;
                                 }
                                 .team {
                                     border-top: 1px solid black;
                                     margin-top: 2em;
                                 }
+                                .coach {
+                                    position: relative;
+                                }
+                                li {
+                                    position: relative;
+                                }
                                 .gender {
+                                    display: inline-block;
+                                    float: right;
                                     font-size: .8em;
                                     padding-left: 1em;
                                     padding-right: 1em;
                                 }
                                 .position {
+                                    display: inline-block;
+                                    position: absolute;
+                                    left: 28em;
                                     font-size: .9em;
                                     padding-left: 1em;
                                     padding-right: 1em;
+                                }
+                                .derived {
+                                    color: blue;
                                 }
                             </style>
                         </head>

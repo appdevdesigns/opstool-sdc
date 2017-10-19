@@ -4,6 +4,7 @@
  */
 
 var async = require('async');
+var _ = require('lodash');
 
 module.exports = {
     
@@ -73,7 +74,8 @@ module.exports = {
                     ren.ren_surname, ren.ren_givenname, ren.ren_preferredname,
                     gen.gender_id, genT.gender_label,
                     team.team_id, teamT.team_label,
-                    pos.position_id, posT.position_label
+                    pos.position_id, posT.position_label,
+                    team.parent_id
                 FROM
                     hris_assign_team_data team
                     
@@ -119,21 +121,44 @@ module.exports = {
                         'position_id', 'position_label',
                     ];
                     
+                    // 1st pass
                     list.forEach((row) => {
                         var teamID = row.team_id;
                         teams[teamID] = teams[teamID] || {
                             id: teamID,
+                            parent: row.parent_id,
                             name: row.team_label,
-                            members: []
+                            members: [],
+                            leaders: []
                         };
                         
                         var member = {};
                         memberFields.forEach((fieldName) => {
                             member[fieldName] = row[fieldName];
                         });
-                        
                         teams[teamID].members.push(member);
+                        
+                        if (member.position_id == 3 || member.position_id == 6) {
+                            teams[teamID].leaders.push(member);
+                        }
                     });
+                    
+                    // 2nd pass: team leaders into parent teams
+                    for (var id in teams) {
+                        var team = teams[id];
+                        var hasLeaders = team.leaders.length > 0;
+                        var parentTeam = teams[team.parent || 0];
+                        
+                        if (hasLeaders && parentTeam) {
+                            team.leaders.forEach((leader) => {
+                                var member = _.clone(leader);
+                                member.position_id = 4; // member
+                                member.position_label = 'Derived member';
+                                member.derived = true;
+                                parentTeam.members.push(member);
+                            });
+                        }
+                    }
                     
                     // Convert results into array
                     for (var id in teams) {
