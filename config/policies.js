@@ -11,16 +11,13 @@
  * http://sailsjs.org/#documentation
  */
 
-// var serviceStack = ADCore.policy.serviceStack([ 'policy1', 'policy2']);
+var serviceStack = ADCore.policy.serviceStack();
 
 module.exports = {
 
-//    'opstool-sdc/YourController': {
-//        method: ['isAuthenticatedService'],
-//        auth: [],
-//        sync: serviceStack,
-//        logout:true
-//    }
+    'opstool-sdc/SDCController': {
+        myInfo: serviceStack.concat(['sdcStaffInfo']),
+    }
 
 
 };

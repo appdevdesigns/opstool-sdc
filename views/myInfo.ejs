@@ -1,0 +1,37 @@
+<style>
+    html {
+        background: lightblue;
+    }
+    body {
+        font-family: sans-serif;
+        max-width: 21em;
+        margin: 2em auto;
+        padding: 1em;
+        background: white;
+    }
+    
+</style>
+
+<div>
+    <h3>QR Code</h3>
+    <img src="<%- image %>" />
+</div>
+
+<div>
+    <h3>Name</h3>
+    <p class="name"><%= userInfo.name %></p>
+    <p class="token">[<%- userInfo.auth_token %>]</p>
+</div>
+
+<div>
+    <h3>Relationships</h3>
+    <ul>
+        <% relationships.forEach((rel) => { %>
+            <li>
+                <!-- <span><%- rel.contact %></span> -->
+                <span class="name"><%= rel.name %></span> 
+                <span class="role">(<%= rel.role %>)</span>
+            </li>
+        <% }) %>
+    </ul>
+</div>

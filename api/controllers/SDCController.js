@@ -5,6 +5,7 @@
  * @help        :: See http://links.sailsjs.org/docs/controllers
  */
 
+var QRCode = require('qrcode');
 
 module.exports = {
 
@@ -14,6 +15,56 @@ module.exports = {
  //       shortcuts: true,
  //       rest: true
     },
+    
+    userList: function(req, res) {
+        SDCData.generateSDCData()
+        .then((data) => {
+            res.send(data);
+        })
+        .catch((err) => {
+            res.status(500).send(err.message || err);
+        });
+    },
+    
+    
+    myInfo: function(req, res) {
+        var guid = req.sdc.renGUID; // from sdcStaffInfo.js policy
+        var authToken, 
+            userInfo = {}, 
+            relationships = [];
+        
+        Promise.all([
+            SDCData.findAuthTokenByGUID(guid),
+            SDCData.generateSDCData(guid, true)
+        ])
+        .then((results) => {
+            authToken = results[0];
+            userInfo = results[1].users[0];
+            relationships = results[1].relationships;
+            
+            return new Promise((resolve, reject) => {
+                QRCode.toDataURL(JSON.stringify({
+                    authToken, userInfo, relationships
+                }), (err, image) => {
+                    if (err) reject(err);
+                    else resolve(image);
+                });
+            })
+        })
+        .then((image) => {
+            res.view('opstool-sdc/myInfo', {
+                title: 'My SDC Info',
+                image,
+                authToken,
+                userInfo,
+                relationships
+            });
+        })
+        .catch((err) => {
+            res.status(500).send(err.message || err);
+        });
+    },
+    
     
     report: function(req, res) {
         
