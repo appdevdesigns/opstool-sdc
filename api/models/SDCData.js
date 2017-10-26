@@ -36,6 +36,33 @@ module.exports = {
     
     
     /**
+     * @param {string} renGUID
+     * @return {Promise}
+     *      Resolves with a {string} of the auth token
+     *      or rejects with an {error}.
+     */
+    findAuthTokenByGUID: function(renGUID) {
+        return new Promise((resolve, reject) => {
+            LHRISWorker.query(`
+                
+                SELECT
+                    w.sdc_token
+                FROM
+                    hris_ren_data r
+                    JOIN hris_worker w
+                        ON r.ren_id = w.ren_id
+                WHERE
+                    r.ren_guid = ?
+                    
+            `, [renGUID], (err, list) => {
+                if (err) reject(err);
+                else if (!list || !list[0]) reject (new Error('HRIS worker info not found'));
+                else resolve(list[0].sdc_token);
+            });
+        });
+    },
+    
+    /**
      * Fetch team data from HRIS
      *
      * @param {string} [langCode]
@@ -71,6 +98,8 @@ module.exports = {
             LHRISRen.query(`
                 
                 SELECT
+                    w.sdc_token,
+                    ren.ren_id, ren.ren_guid,
                     ren.ren_surname, ren.ren_givenname, ren.ren_preferredname,
                     gen.gender_id, genT.gender_label,
                     team.team_id, teamT.team_label,
@@ -116,9 +145,10 @@ module.exports = {
                 else {
                     var teams = {};
                     var memberFields = [
-                        'ren_id', 'ren_surname', 'ren_givenname', 
+                        'ren_id', 'ren_guid', 'ren_surname', 'ren_givenname', 
                         'ren_preferredname', 'gender_id', 'gender_label',
                         'position_id', 'position_label', 'team_label',
+                        'sdc_token',
                     ];
                     
                     // 1st pass
@@ -220,6 +250,120 @@ module.exports = {
         }
         
         return results;
+    },
+    
+    
+    /**
+     * @param {string} [guidFilter]
+     *      Only return results for this user.
+     *      Default is no filter.
+     * @param {boolean} [includeNames]
+     *      Whether or not to include contact names in the relationships list,
+     *      in addition to the contact IDs.
+     *      Default is false.
+     * @return {Promise}
+     */
+    generateSDCData: function(guidFilter=null, includeNames=false) {
+        return new Promise((resolve, reject) => {
+            
+            SDCData.fetchTeams()
+            .then((teamData) => {
+                // Use team data to generate coaching pairs for each team
+                var gcpQueue = [];
+                teamData.forEach((team) => {
+                    // Each team is done separately in parallel
+                    gcpQueue.push(SDCData.generateCoachingPairs(team));
+                });
+                
+                return Promise.all(gcpQueue)
+            })
+            .then((gcpResults) => {
+                // Flatten the previous results into a single array
+                var coachingData = [];
+                gcpResults.forEach((gcp) => {
+                    coachingData = coachingData.concat(gcp);
+                });
+                
+                var packet = function(user) {
+                    return {
+                        id: user.ren_guid,
+                        name: `${user.ren_surname}, ${user.ren_givenname} (${user.ren_preferredname})`,
+                        auth_token: user.sdc_token
+                    }
+                };
+                
+                // Parse out a list of unique users, and a list of relationships
+                var users = {};
+                var relationships = [];
+                coachingData.forEach((obj) => {
+                    var isCoachPresent = false;
+                    var coachID = null;
+                    
+                    // Coach is a user
+                    if (obj.coach && obj.coach.ren_guid) {
+                        isCoachPresent = true;
+                        coachID = obj.coach.ren_guid;
+                        users[coachID] = users[coachID] || packet(obj.coach);
+                    }
+                    
+                    // Coachees are all users also
+                    obj.coachee.forEach((o) => {
+                        var coacheeID = o.ren_guid;
+                        users[coacheeID] = users[coacheeID] || packet(o);
+                        
+                        // Relationship exists if both coach & coachee present
+                        if (isCoachPresent) {
+                            if (!guidFilter || guidFilter == coachID) {
+                                var rel = {
+                                    user: coachID,
+                                    contact: coacheeID,
+                                    role: 'coachee'
+                                };
+                                relationships.push(rel);
+                            }
+                            if (!guidFilter || guidFilter == coacheeID) {
+                                var rel = {
+                                    user: coacheeID,
+                                    contact: coachID,
+                                    role: 'coach'
+                                };
+                                relationships.push(rel);
+                            }
+                        }
+                    });
+                    
+                });
+                
+                if (includeNames) {
+                    relationships.forEach((rel) => {
+                        var id = rel.contact;
+                        rel.name = users[id].name;
+                    });
+                }
+                    
+                // Convert indexed user list to array
+                var userArray = [];
+                if (guidFilter) {
+                    userArray.push(users[guidFilter]);
+                }
+                else {
+                    for (var id in users) {
+                        userArray.push(users[id]);
+                    }
+                }
+                
+                resolve({
+                    users: userArray, 
+                    relationships: relationships,
+                });
+            })
+            .catch((err) => {
+                console.log(err);
+                reject(err);
+            });
+        });
     }
+    
+    
 
 };
