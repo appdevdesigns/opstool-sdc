@@ -124,7 +124,7 @@ module.exports = {
                     
                     JOIN hris_ren_data ren
                         ON assign.ren_id = ren.ren_id
-                        AND ren.statustype_id = 5
+                        AND ren.statustype_id IN (3, 4, 5)
                     JOIN hris_gender_data gen
                         ON ren.gender_id = gen.gender_id
                     JOIN hris_gender_trans genT
