@@ -46,7 +46,8 @@ module.exports = {
             LHRISWorker.query(`
                 
                 SELECT
-                    w.sdc_token
+                    w.sdc_token,
+                    w.sdc_guid
                 FROM
                     hris_ren_data r
                     JOIN hris_worker w
@@ -57,7 +58,10 @@ module.exports = {
             `, [renGUID], (err, list) => {
                 if (err) reject(err);
                 else if (!list || !list[0]) reject (new Error('HRIS worker info not found'));
-                else resolve(list[0].sdc_token);
+                else resolve({
+                    sdcGUID: list[0].sdc_guid,
+                    authToken: list[0].sdc_token
+                });
             });
         });
     },
@@ -98,7 +102,7 @@ module.exports = {
             LHRISRen.query(`
                 
                 SELECT
-                    w.sdc_token,
+                    w.sdc_token, w.sdc_guid,
                     ren.ren_id, ren.ren_guid,
                     ren.ren_surname, ren.ren_givenname, ren.ren_preferredname,
                     gen.gender_id, genT.gender_label,
@@ -145,10 +149,10 @@ module.exports = {
                 else {
                     var teams = {};
                     var memberFields = [
-                        'ren_id', 'ren_guid', 'ren_surname', 'ren_givenname', 
+                        'ren_id', /*'ren_guid',*/ 'ren_surname', 'ren_givenname', 
                         'ren_preferredname', 'gender_id', 'gender_label',
                         'position_id', 'position_label', 'team_label',
-                        'sdc_token',
+                        'sdc_token', 'sdc_guid'
                     ];
                     
                     // 1st pass
@@ -255,7 +259,7 @@ module.exports = {
     
     /**
      * @param {string} [guidFilter]
-     *      Only return results for this user.
+     *      Only return results for this SDC GUID.
      *      Default is no filter.
      * @param {boolean} [includeNames]
      *      Whether or not to include contact names in the relationships list,
@@ -286,8 +290,10 @@ module.exports = {
                 
                 var packet = function(user) {
                     return {
-                        id: user.ren_guid,
-                        name: `${user.ren_surname}, ${user.ren_givenname} (${user.ren_preferredname})`,
+                        //id: user.ren_guid,
+                        id: user.sdc_guid,
+                        //name: `${user.ren_surname}, ${user.ren_givenname} (${user.ren_preferredname})`,
+                        name: user.ren_preferredname,
                         auth_token: user.sdc_token
                     }
                 };
@@ -300,15 +306,15 @@ module.exports = {
                     var coachID = null;
                     
                     // Coach is a user
-                    if (obj.coach && obj.coach.ren_guid) {
+                    if (obj.coach && obj.coach.sdc_guid) {
                         isCoachPresent = true;
-                        coachID = obj.coach.ren_guid;
+                        coachID = obj.coach.sdc_guid;
                         users[coachID] = users[coachID] || packet(obj.coach);
                     }
                     
                     // Coachees are all users also
                     obj.coachee.forEach((o) => {
-                        var coacheeID = o.ren_guid;
+                        var coacheeID = o.sdc_guid;
                         users[coacheeID] = users[coacheeID] || packet(o);
                         
                         // Relationship exists if both coach & coachee present

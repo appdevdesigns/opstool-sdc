@@ -28,19 +28,20 @@ module.exports = {
     
     
     myInfo: function(req, res) {
-        var guid = req.sdc.renGUID; // from sdcStaffInfo.js policy
-        var authToken, 
+        var renGUID = req.sdc.renGUID; // from sdcStaffInfo.js policy
+        var authToken, sdcGUID, // SDC guid is different from ren guid
             userInfo = {}, 
             relationships = [];
         
-        Promise.all([
-            SDCData.findAuthTokenByGUID(guid),
-            SDCData.generateSDCData(guid, true)
-        ])
+        SDCData.findAuthTokenByGUID(renGUID)
         .then((results) => {
-            authToken = results[0];
-            userInfo = results[1].users[0];
-            relationships = results[1].relationships;
+            authToken = results.authToken;
+            sdcGUID = results.sdcGUID;
+            return SDCData.generateSDCData(sdcGUID, true);
+        })
+        .then((results) => {
+            userInfo = results.users[0];
+            relationships = results.relationships;
             
             return new Promise((resolve, reject) => {
                 QRCode.toDataURL(JSON.stringify({
