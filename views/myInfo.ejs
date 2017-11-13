@@ -4,7 +4,7 @@
     }
     body {
         font-family: sans-serif;
-        max-width: 21em;
+        max-width: 30em;
         margin: 2em auto;
         padding: 1em;
         background: white;
@@ -20,7 +20,6 @@
 <div>
     <h3>Name</h3>
     <p class="name"><%= userInfo.name %></p>
-    <p class="token">[<%- userInfo.auth_token %>]</p>
 </div>
 
 <div>
@@ -28,7 +27,6 @@
     <ul>
         <% relationships.forEach((rel) => { %>
             <li>
-                <!-- <span><%- rel.contact %></span> -->
                 <span class="name"><%= rel.name %></span> 
                 <span class="role">(<%= rel.role %>)</span>
             </li>
