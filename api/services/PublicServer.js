@@ -30,6 +30,10 @@ module.exports = {
                 }),
                 callback: (err, res, body) => {
                     if (err) throw err;
+                    else if (res.statusCode != 200) {
+                        console.log(body);
+                        throw new Error('SDC server push received status ' + res.statusCode);
+                    }
                     else {
                         console.log('SDC server push succeeded');
                     }
