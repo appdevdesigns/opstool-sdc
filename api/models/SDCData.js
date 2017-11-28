@@ -38,10 +38,43 @@ module.exports = {
     /**
      * @param {string} renGUID
      * @return {Promise}
-     *      Resolves with a {string} of the auth token
+     *      Resolves with a basic {object}
      *      or rejects with an {error}.
      */
     findAuthTokenByGUID: function(renGUID) {
+        return new Promise((resolve, reject) => {
+            LHRISWorker.query(`
+                
+                SELECT
+                    w.sdc_token,
+                    w.sdc_guid,
+                    r.ren_id
+                FROM
+                    hris_ren_data r
+                    JOIN hris_worker w
+                        ON r.ren_id = w.ren_id
+                WHERE
+                    r.ren_guid = ?
+                    
+            `, [renGUID], (err, list) => {
+                if (err) reject(err);
+                else if (!list || !list[0]) reject (new Error('HRIS worker info not found'));
+                else resolve({
+                    sdcGUID: list[0].sdc_guid,
+                    authToken: list[0].sdc_token,
+                    renID: list[0].ren_id
+                });
+            });
+        });
+    },
+    
+    /**
+     * @param {integer} renID
+     * @return {Promise}
+     *      Resolves with a basic {object}
+     *      or rejects with an {error}.
+     */
+    findAuthTokenByRenID: function(renID) {
         return new Promise((resolve, reject) => {
             LHRISWorker.query(`
                 
@@ -53,9 +86,9 @@ module.exports = {
                     JOIN hris_worker w
                         ON r.ren_id = w.ren_id
                 WHERE
-                    r.ren_guid = ?
+                    r.ren_id = ?
                     
-            `, [renGUID], (err, list) => {
+            `, [renID], (err, list) => {
                 if (err) reject(err);
                 else if (!list || !list[0]) reject (new Error('HRIS worker info not found'));
                 else resolve({
@@ -86,7 +119,7 @@ module.exports = {
      *                          gender_id: 3,
      *                          gender_label: "Male",
      *                          position_id: 3,
-     *                          position_label: "Team Leader"
+     *                          position_label: "Team Leader",
      *                      },
      *                      ...
      *                  ]
@@ -102,7 +135,7 @@ module.exports = {
             LHRISRen.query(`
                 
                 SELECT
-                    w.sdc_token, w.sdc_guid,
+                    w.sdc_token, w.sdc_guid, 
                     ren.ren_id, ren.ren_guid,
                     ren.ren_surname, ren.ren_givenname, ren.ren_preferredname,
                     gen.gender_id, genT.gender_label,
@@ -139,6 +172,7 @@ module.exports = {
                         ON ren.ren_id = w.ren_id
                         AND w.worker_dateleftchinamin = '1000-01-01'
                         AND w.worker_terminationdate = '1000-01-01'
+                        
             `, 
             [langCode, langCode, langCode], 
             (err, list) => {

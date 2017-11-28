@@ -23,6 +23,7 @@ module.exports = {
   'get /*(^.*)' : 'opstool-sdc/PluginController.profile'
 
   */
+  'get /opstool-sdc/sdc/info/:ren_id': 'opstool-sdc/SDCController.renInfo',
 
 
 };
