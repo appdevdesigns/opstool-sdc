@@ -99,6 +99,26 @@ module.exports = {
         });
     },
     
+    
+    findEmailByRenID: function(renID) {
+        return new Promise((resolve, reject) => {
+            LHRISEmail.find({
+                ren_id: renID,
+                email_issecure: 1
+            })
+            .exec((err, list) => {
+                if (err) reject(err);
+                else if (!list || !list[0]) {
+                    reject(new Error('Not found'));
+                }
+                else {
+                    resolve(list[0].email_address);
+                }
+            });
+        });
+    },
+    
+    
     /**
      * Fetch team data from HRIS
      *

@@ -9,6 +9,12 @@
         padding: 1em;
         background: white;
     }
+    button {
+        font-size: 2em;
+        display: block;
+        margin: 1em auto;
+        padding: .5em;
+    }
     
 </style>
 
@@ -33,3 +39,37 @@
         <% }) %>
     </ul>
 </div>
+
+<div>
+    <form method="POST" action="/opstool-sdc/sdc/info/<%= renID %>">
+        <input type="hidden" name="_csrf" value="<%= _csrf %>">
+        <button type="submit" id="send-email">
+            Send Email
+        </button>
+    </form>
+</div>
+
+<script src="/js/jquery.min.js"></script>
+<script>
+    $('#send-email').on('click', function(ev) {
+        var $button = $(this);
+        var $form = $button.parents('form').eq(0);
+        
+        ev.preventDefault();
+        if (!confirm('Are you sure?')) return;
+        
+        $.ajax({
+            url: $form.attr('action'),
+            method: 'POST',
+            data: $form.serialize()
+        })
+        .done(() => {
+            alert('Email sent');
+        })
+        .fail((xhr, status, err) => {
+            console.log(arguments);
+            alert(err.message || err);
+        })
+    });
+    
+</script>

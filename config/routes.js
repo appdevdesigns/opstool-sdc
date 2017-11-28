@@ -24,6 +24,8 @@ module.exports = {
 
   */
   'get /opstool-sdc/sdc/info/:ren_id': 'opstool-sdc/SDCController.renInfo',
+  
+  'post /opstool-sdc/sdc/info/:ren_id': 'opstool-sdc/SDCController.emailInfo'
 
 
 };

@@ -109,6 +109,56 @@ module.exports = {
         });
     },
     
+    
+    emailInfo: function(req, res) {
+        var renID = req.param('ren_id');
+        var emailAddress, authToken, sdcGUID;
+        
+        SDCData.findEmailByRenID(renID)
+        .then((result) => {
+            emailAddress = result;
+            return SDCData.findAuthTokenByRenID(renID);
+        })
+        .then((results) => {
+            authToken = results.authToken;
+            sdcGUID = results.sdcGUID;
+            return SDCData.generateSDCData(sdcGUID, true);
+        })
+        .then((results) => {
+            userInfo = results.users[0];
+            relationships = results.relationships;
+            
+            return new Promise((resolve, reject) => {
+                QRCode.toDataURL(JSON.stringify({
+                    authToken, userInfo, relationships
+                }), (err, image) => {
+                    if (err) reject(err);
+                    else resolve(image);
+                });
+            });
+        })
+        .then((image) => {
+            EmailNotifications.trigger('sdc.appinfo', {
+                to: [emailAddress],
+                variables: {
+                    image,
+                    userInfo,
+                    relationships
+                }
+            })
+            .done((html) => {
+                res.send(html || 'OK');
+            })
+            .fail((err) => {
+                throw err;
+            });
+        })
+        .catch((err) => {
+            res.error(err.message || err);
+        });
+    },
+    
+    
     report: function(req, res) {
         
         SDCData.fetchTeams()
