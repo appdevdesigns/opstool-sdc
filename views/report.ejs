@@ -1,0 +1,83 @@
+<style>
+    body {
+        font-family: sans-serif;
+        max-width: 50em;
+        margin: 1em auto;
+    }
+    .team {
+        border-top: 1px solid black;
+        margin-top: 2em;
+    }
+        .team a {
+            color: inherit;
+            text-decoration: none;
+        }
+        .team a:hover {
+            text-decoration: underline;
+        }
+    .coach {
+        position: relative;
+    }
+    li {
+        position: relative;
+    }
+    .gender {
+        display: inline-block;
+        float: right;
+        font-size: .8em;
+        padding-left: 1em;
+        padding-right: 1em;
+    }
+    .position {
+        display: inline-block;
+        position: absolute;
+        left: 28em;
+        font-size: .9em;
+        padding-left: 1em;
+        padding-right: 1em;
+    }
+    .derived {
+        color: blue;
+    }
+</style>
+
+<% teams.forEach((team) => { %>
+
+    <div class="team">
+        <h3><%- team.name %></h3>
+        <% team.coachingPairs.forEach((item) => { %>
+            
+            <div class="coach">
+                <b>Coach:</b>
+                <% if (item.coach) { %>
+                    <a href="/opstool-sdc/sdc/info/<%- item.coach.ren_id %>">
+                        <%- item.coach.ren_surname %>,
+                        <%- item.coach.ren_givenname %>
+                        (<%- item.coach.ren_preferredname %>)
+                    </a>
+                    <span class="gender">[<%- item.coach.gender_label %>]</span>
+                    <span class="position"><%- item.coach.position_label %></span>
+                <% } else { %>
+                    none
+                <% } %>
+            </div>
+        
+            <ul class="coachee">
+            <% item.coachee.forEach((member) => { %>
+                <li class="<%- member.derived ? 'derived' : '' %>">
+                    <a href="/opstool-sdc/sdc/info/<%- member.ren_id %>">
+                        <%- member.ren_surname %>
+                        <%- member.ren_givenname %>
+                        (<%- member.ren_preferredname %>)
+                    </a>
+                    <span class="gender">[<%- member.gender_label %>]</span>
+                    <span class="position"><%- member.position_label %></span>
+                </li>
+            <% }) %>
+            </ul>
+        
+        <% }) %>
+    </div>
+    
+<% }) %>
+        

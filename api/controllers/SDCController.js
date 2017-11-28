@@ -75,88 +75,13 @@ module.exports = {
                 throw new Error('No teams found');
             }
             else {
-                var html = '';
-                
                 teams.forEach((team) => {
-                    html += `<div class="team">`;
-                    html += `<h3>${team.name}</h3>`;
-                    SDCData.generateCoachingPairs(team).forEach((item) => {
-                        html += `<div class="coach"><b>Coach:</b>`
-                        if (item.coach) {
-                            html += `
-                                    ${item.coach.ren_surname},
-                                    ${item.coach.ren_givenname}
-                                    (${item.coach.ren_preferredname})
-                                    <span class="gender">[${item.coach.gender_label}]</span>
-                                    <span class="position">${item.coach.position_label}</span>
-                            `;
-                        } else {
-                            html += ` none`;
-                        }
-                        html += `
-                                </div>
-                                <ul class="coachee">
-                        `;
-                        item.coachee.forEach((member) => {
-                            html += `
-                                <li class="${member.derived ? 'derived' : ''}">
-                                    ${member.ren_surname},
-                                    ${member.ren_givenname}
-                                    (${member.ren_preferredname})
-                                    <span class="gender">[${member.gender_label}]</span>
-                                    <span class="position">${member.position_label}</span>
-                                </li>
-                            `;
-                        });
-                        html += `</ul></div>`;
-                    });
+                    team.coachingPairs = SDCData.generateCoachingPairs(team);
                 });
-                
-                res.send(`
-                    <!DOCTYPE html>
-                    <html>
-                        <head>
-                            <style>
-                                body {
-                                    font-family: sans-serif;
-                                    max-width: 50em;
-                                    margin: 1em auto;
-                                }
-                                .team {
-                                    border-top: 1px solid black;
-                                    margin-top: 2em;
-                                }
-                                .coach {
-                                    position: relative;
-                                }
-                                li {
-                                    position: relative;
-                                }
-                                .gender {
-                                    display: inline-block;
-                                    float: right;
-                                    font-size: .8em;
-                                    padding-left: 1em;
-                                    padding-right: 1em;
-                                }
-                                .position {
-                                    display: inline-block;
-                                    position: absolute;
-                                    left: 28em;
-                                    font-size: .9em;
-                                    padding-left: 1em;
-                                    padding-right: 1em;
-                                }
-                                .derived {
-                                    color: blue;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            ${html}
-                        </body>
-                    </html>
-                `);
+                res.view('opstool-sdc/report', {
+                    title: 'SDC teams report',
+                    teams: teams,
+                });
             }
         })
         .catch((err) => {
