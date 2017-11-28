@@ -17,7 +17,7 @@ module.exports = {
     },
     
     userList: function(req, res) {
-        SDCData.generateSDCData()
+        SDCData.generateSDCData(null, true)
         .then((data) => {
             res.send(data);
         })

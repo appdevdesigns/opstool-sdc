@@ -17,7 +17,7 @@ module.exports = {
             return;
         }
         
-        SDCData.generateSDCData()
+        SDCData.generateSDCData(null, true)
         .then((data) => {            
             request.post({
                 url: sdc.url,
