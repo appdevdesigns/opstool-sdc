@@ -15,7 +15,7 @@ module.exports = function(req, res, next) {
     LHRISRen.query(`
         
         SELECT
-            ren.ren_guid
+            ren.ren_guid, ren.ren_id
         FROM
             hris_perm_access AS access
             JOIN hris_ren_data AS ren
@@ -37,6 +37,7 @@ module.exports = function(req, res, next) {
         else {
             req.sdc = req.sdc || {};
             req.sdc.renGUID = list[0].ren_guid;
+            req.sdc.renID = list[0].ren_id;
                         
             next();
         }

@@ -28,44 +28,9 @@ module.exports = {
     
     
     myInfo: function(req, res) {
-        var renGUID = req.sdc.renGUID; // from sdcStaffInfo.js policy
-        var authToken, sdcGUID, renID, // SDC guid is different from ren guid
-            userInfo = {}, 
-            relationships = [];
-        
-        SDCData.findAuthTokenByGUID(renGUID)
-        .then((results) => {
-            authToken = results.authToken;
-            sdcGUID = results.sdcGUID;
-            renID = results.renID;
-            return SDCData.generateSDCData(sdcGUID, true);
-        })
-        .then((results) => {
-            userInfo = results.users[0];
-            relationships = results.relationships;
-            
-            return new Promise((resolve, reject) => {
-                QRCode.toDataURL(JSON.stringify({
-                    authToken, userInfo, relationships
-                }), (err, image) => {
-                    if (err) reject(err);
-                    else resolve(image);
-                });
-            })
-        })
-        .then((image) => {
-            res.view('opstool-sdc/myInfo', {
-                title: 'My SDC Info',
-                renID,
-                image,
-                authToken,
-                userInfo,
-                relationships
-            });
-        })
-        .catch((err) => {
-            res.status(500).send(err.message || err);
-        });
+        var renID = req.sdc.renID; // from sdcStaffInfo.js policy
+        req.params.ren_id = renID;
+        this.renInfo(req, res);
     },
     
     
