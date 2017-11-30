@@ -16,7 +16,8 @@ var serviceStack = ADCore.policy.serviceStack();
 module.exports = {
 
     'opstool-sdc/SDCController': {
-        myInfo: serviceStack.concat(['sdcStaffInfo']),
+        renQrCode: true,
+        '*': serviceStack.concat(['sdcStaffInfo']),
     }
 
 

@@ -75,9 +75,43 @@ module.exports = {
     },
     
     
+    // Serve a user's QR code as an image file
+    renQrCode: function(req, res) {
+        var tokenQR = req.param('token_qr');
+        var authToken, userInfo, relationships;
+        
+        SDCData.find({ token_qr: tokenQR })
+        .then((list) => {
+            if (!list || !list[0]) {
+                throw new Error('Not found');
+            }
+            else {
+                var renID = list[0].ren_id;
+                return SDCData.findAuthTokenByRenID(renID);
+            }
+        })
+        .then((results) => {
+            var sdcGUID = results.sdcGUID;
+            authToken = results.authToken;
+            return SDCData.generateSDCData(sdcGUID, true);
+        })
+        .then((results) => {
+            userInfo = results.users[0];
+            relationships = results.relationships;
+            QRCode.toFileStream(res, JSON.stringify({
+                authToken, userInfo, relationships
+            }));
+        })
+        .catch((err) => {
+            res.status(500).send(err.message || err);
+        });
+    
+    },
+    
+    
     emailInfo: function(req, res) {
         var renID = req.param('ren_id');
-        var emailAddress, authToken, sdcGUID;
+        var emailAddress, authToken, sdcGUID, imageQR, tokenQR;
         
         SDCData.findEmailByRenID(renID)
         .then((result) => {
@@ -103,12 +137,21 @@ module.exports = {
             });
         })
         .then((image) => {
+            imageQR = image;
+            return SDCData.find({ ren_id: renID })
+        })
+        .then((list) => {
+            if (list && list[0]) {
+                tokenQR = list[0].token_qr;
+            }
+            
             EmailNotifications.trigger('sdc.appinfo', {
                 to: [emailAddress],
                 variables: {
                     image,
                     userInfo,
-                    relationships
+                    relationships,
+                    tokenQR
                 }
             })
             .done((html) => {
