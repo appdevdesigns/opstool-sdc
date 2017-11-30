@@ -132,23 +132,34 @@ module.exports = {
                     authToken, userInfo, relationships
                 }), (err, image) => {
                     if (err) reject(err);
-                    else resolve(image);
+                    else {
+                        imageQR = image;
+                        resolve();
+                    }
                 });
             });
         })
-        .then((image) => {
-            imageQR = image;
-            return SDCData.find({ ren_id: renID })
+        .then(() => {
+            return new Promise((resolve, reject) => {
+                SDCData.find({ ren_id: renID })
+                .exec((err, list) => {
+                    if (err) reject(err);
+                    else if (!list || !list[0]) {
+                        tokenQR = '';
+                        resolve();
+                    }
+                    else {
+                        tokenQR = list[0].token_qr;
+                        resolve();
+                    }
+                });
+            });
         })
-        .then((list) => {
-            if (list && list[0]) {
-                tokenQR = list[0].token_qr;
-            }
-            
-            EmailNotifications.trigger('sdc.appinfo', {
+        .then(() => {
+            EmailNotifications.previewTrigger('sdc.appinfo', {
                 to: [emailAddress],
                 variables: {
-                    image,
+                    image: imageQR,
                     userInfo,
                     relationships,
                     tokenQR
