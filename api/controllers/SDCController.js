@@ -111,7 +111,8 @@ module.exports = {
     
     emailInfo: function(req, res) {
         var renID = req.param('ren_id');
-        var emailAddress, authToken, sdcGUID, imageQR, tokenQR;
+        var emailAddress, authToken, sdcGUID;
+        var QRData, urlQR, tokenQR, stringQR, base64QR;
         
         SDCData.findEmailByRenID(renID)
         .then((result) => {
@@ -127,13 +128,27 @@ module.exports = {
             userInfo = results.users[0];
             relationships = results.relationships;
             
+            QRData = JSON.stringify({
+                authToken, userInfo, relationships
+            });
+            
             return new Promise((resolve, reject) => {
-                QRCode.toDataURL(JSON.stringify({
-                    authToken, userInfo, relationships
-                }), (err, image) => {
+                QRCode.toDataURL(QRData, (err, image) => {
                     if (err) reject(err);
                     else {
-                        imageQR = image;
+                        urlQR = image;
+                        base64QR = image.substring(22);
+                        resolve();
+                    }
+                });
+            });
+        })
+        .then(() => {
+            return new Promise((resolve, reject) => {
+                QRCode.toString(QRData, (err, image) => {
+                    if (err) reject(err);
+                    else {
+                        stringQR = image;
                         resolve();
                     }
                 });
@@ -156,14 +171,24 @@ module.exports = {
             });
         })
         .then(() => {
+            var cid = 'qrcode@sdc.zteam.biz';
             EmailNotifications.trigger('sdc.appinfo', {
                 to: [emailAddress],
                 variables: {
-                    image: imageQR,
+                    image: urlQR, // data URL base64 encoded
                     userInfo,
                     relationships,
-                    tokenQR
-                }
+                    tokenQR,      // token to use in renQrCode() route
+                    stringQR,     // ASCII QR code
+                    cidQR: cid,   // CID for the QR code attachment
+                },
+                attachments: [
+                    {
+                        filename: 'qrcode.png',
+                        content: Buffer.from(base64QR, 'base64'),
+                        cid: cid
+                    }
+                ]
             })
             .done((html) => {
                 res.send(html || 'OK');
