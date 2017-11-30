@@ -21,7 +21,17 @@ module.exports = {
             size: 11,
             primaryKey: true,
             autoIncrement: true
-        }
+        },
+        
+        ren_id: {
+            type: 'integer',
+            size: 11,
+        },
+        
+        token_qr: {
+            type: 'text',
+        },
+        
     },
     
     ////
