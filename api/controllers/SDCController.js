@@ -156,7 +156,7 @@ module.exports = {
             });
         })
         .then(() => {
-            EmailNotifications.previewTrigger('sdc.appinfo', {
+            EmailNotifications.trigger('sdc.appinfo', {
                 to: [emailAddress],
                 variables: {
                     image: imageQR,
