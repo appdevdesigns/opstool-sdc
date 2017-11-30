@@ -172,6 +172,8 @@ module.exports = {
         })
         .then(() => {
             var cid = 'qrcode@sdc.zteam.biz';
+            var qrcodeBuffer = Buffer.from(base64QR, 'base64');
+            
             EmailNotifications.trigger('sdc.appinfo', {
                 to: [emailAddress],
                 variables: {
@@ -185,7 +187,8 @@ module.exports = {
                 attachments: [
                     {
                         filename: 'qrcode.png',
-                        content: Buffer.from(base64QR, 'base64'),
+                        content: qrcodeBuffer,
+                        contents: qrcodeBuffer,
                         cid: cid
                     }
                 ]
