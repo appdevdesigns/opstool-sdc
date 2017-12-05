@@ -13,7 +13,7 @@ module.exports = {
     autoCreatedAt: false,
     autoUpdatedAt: false,
     autoPK: false,
-    migrate: 'alter',
+    migrate: 'safe',
     
     attributes: {
         id: {
