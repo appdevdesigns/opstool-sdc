@@ -11,7 +11,6 @@ module.exports = {
      */
     push: function() {
         var sdc = sails.config.sdc || {};
-        
         if (!sdc.url) {
             console.log('No SDC server url found. Aborting data push.');
             return;

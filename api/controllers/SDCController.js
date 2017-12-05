@@ -188,7 +188,7 @@ module.exports = {
                     {
                         filename: 'qrcode.png',
                         content: qrcodeBuffer,
-                        contents: qrcodeBuffer,
+                        contents: qrcodeBuffer, // old version syntax
                         cid: cid
                     }
                 ]
