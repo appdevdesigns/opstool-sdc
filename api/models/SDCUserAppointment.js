@@ -75,5 +75,35 @@ module.exports = {
         });
     },
     
+    
+    
+    findByDate: function(startDate, endDate) {
+        return new Promise((resolve, reject) => {
+            
+            startDate = startDate || 0;
+            endDate = endDate || Date.now();
+            
+            SDCUserAppointment.query(`
+                
+                SELECT
+                    ua.user, ua.status,
+                    a.session, a.date
+                FROM
+                    sdc_user_appointment ua
+                    JOIN sdc_appointment a
+                        ON ua.appointment = a.id
+                WHERE
+                    a.date >= ?
+                    AND a.date <= ?
+                
+            `, [startDate, endDate], (err, list=[]) => {
+                if (err) reject(err);
+                else {
+                    resolve(list);
+                }
+            });
+        });
+    }
+    
 
 };

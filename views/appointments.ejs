@@ -1,0 +1,103 @@
+<style>
+    body {
+        font-family: sans-serif;
+        max-width: 50em;
+        margin: 1em auto;
+    }
+    .team {
+        border-top: 1px solid black;
+        margin-top: 2em;
+    }
+        .team a {
+            color: inherit;
+            text-decoration: none;
+        }
+        .team a:hover {
+            text-decoration: underline;
+        }
+    
+    dl {
+        display: flex;
+        flex-flow: row;
+        flex-wrap: wrap;
+        width: 15em;
+        margin-left: 1em;
+    }
+    dl dt {
+        flex: 0 0 50%;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+    dl dt:after {
+        content: ": ";
+    }
+    dl dd {
+        flex: 0 0 50%;
+        margin-left: auto;
+        text-align: left;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+    dl dd:after {
+    }
+    
+    form label {
+    
+    }
+    form input {
+    
+    }
+    form button {
+    
+    }
+</style>
+
+<form method="GET">
+    <label for="startDate">Start date</label>
+    <input id="startDate" name="startDate" type="date" placeholder="yyyy-mm-dd" />
+    
+    <label for="endDate">End date</label>
+    <input id="endDate" name="endDate" type="date" placeholder="yyyy-mm-dd" />
+    <button type="submit">Go</button>
+</form>
+
+
+<div>
+    <h2>Totals</h2>
+    <ul>
+        <li><h3><%= teams.length %> teams</h3></li>
+        <li>
+            <h3><%= appointments.length %> appointments</h3>
+            <dl>
+            <% for (var status in byStatus) { %>
+                <dt><%= status %></dt>
+                <dd><%= byStatus[status] %></dd>
+            <% } %>
+            </dl>
+        </li>
+</div>
+
+<hr>
+
+<div>
+    <h2>Teams</h2>
+
+    <% teams.forEach((team) => { %>
+        <% if (team.appointments && Object.keys(team.appointments).length > 0) { %>
+        <div class="team">
+            <h3><%- team.name %></h3>
+            
+            <h4><%= team.members.length %> members</h4>
+            
+            <h4>Appointments</h4>
+            <dl>
+            <% for (var status in team.appointments) { %>
+                <dt><%= status %></dt>
+                <dd><%= team.appointments[status] %></dd>
+            <% } %>
+            </dl>
+        </div>
+        <% } %>
+    <% }) %>
+            
+</div>
