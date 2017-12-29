@@ -7,6 +7,28 @@
 
 var QRCode = require('qrcode');
 
+/**
+ * Takes the results of a single-result SDCData.generateSDCData() call and 
+ * returns a packet for that user's QR code.
+ * return {String}
+ */
+function packageQRInfo(results) {
+    var userInfo = results.users[0];
+    
+    if (sails.config.sdc && sails.config.sdc.codePushKeys) {
+        userInfo.updateKeys = {
+            ios: sails.config.sdc.codePushKeys.ios,
+            android: sails.config.sdc.codePushKeys.android,
+        }
+    }
+    
+    return JSON.stringify({
+        userInfo: userInfo,
+        relationships: results.relationships
+    });
+}
+
+
 module.exports = {
 
     _config: {
@@ -27,6 +49,7 @@ module.exports = {
     },
     
     
+    // Shows the renInfo page for the current user
     myInfo: function(req, res) {
         var renID = req.sdc.renID; // from sdcStaffInfo.js policy
         req.params.ren_id = renID;
@@ -34,6 +57,7 @@ module.exports = {
     },
     
     
+    // Shows a user's SDC information and QR code
     renInfo: function(req, res) {
         var renID = req.param('ren_id');
         var authToken, sdcGUID, // SDC guid is different from ren guid
@@ -49,11 +73,10 @@ module.exports = {
         .then((results) => {
             userInfo = results.users[0];
             relationships = results.relationships;
+            var QRData = packageQRInfo(results);
             
             return new Promise((resolve, reject) => {
-                QRCode.toDataURL(JSON.stringify({
-                    authToken, userInfo, relationships
-                }), (err, image) => {
+                QRCode.toDataURL(QRData, (err, image) => {
                     if (err) reject(err);
                     else resolve(image);
                 });
@@ -96,11 +119,7 @@ module.exports = {
             return SDCData.generateSDCData(sdcGUID, true);
         })
         .then((results) => {
-            userInfo = results.users[0];
-            relationships = results.relationships;
-            QRCode.toFileStream(res, JSON.stringify({
-                authToken, userInfo, relationships
-            }));
+            QRCode.toFileStream(res, packageQRInfo(results));
         })
         .catch((err) => {
             res.status(500).send(err.message || err);
@@ -109,6 +128,7 @@ module.exports = {
     },
     
     
+    // Sends a user's SDC information and QR code by email
     emailInfo: function(req, res) {
         var renID = req.param('ren_id');
         var emailAddress, authToken, sdcGUID;
@@ -127,10 +147,7 @@ module.exports = {
         .then((results) => {
             userInfo = results.users[0];
             relationships = results.relationships;
-            
-            QRData = JSON.stringify({
-                authToken, userInfo, relationships
-            });
+            QRData = packageQRInfo(results);
             
             return new Promise((resolve, reject) => {
                 QRCode.toDataURL(QRData, (err, image) => {
@@ -201,11 +218,12 @@ module.exports = {
             });
         })
         .catch((err) => {
-            res.error(err.message || err);
+            res.send(err.message || err);
         });
     },
     
     
+    // Displays all SDC users
     report: function(req, res) {
         
         SDCData.fetchTeams()
