@@ -342,6 +342,115 @@ module.exports = {
             res.serverError(err.message || err);
         });
     
+    },
+    
+    appointmentsReport2: function(req, res) {
+        res.view('opstool-sdc/appointments2', {
+            title: 'SDC appointments report',
+        });
+    },
+    
+    
+    appointmentsReportData: function(req, res) {
+        var startDate = req.param('startDate');
+        var endDate = req.param('endDate');
+        
+        var teams, appointments;
+        
+        var bySession = {
+        /*
+            <session>: {
+                confirmed: <int>,
+                pending: <int>,
+                requested: <int>,
+                completed: <int>,
+            },
+            ...
+        */
+        };
+        
+        var byUser = {
+        /*
+            <sdc_guid>: {
+                confirmed: <int>,
+                pending: <int>,
+                requested: <int>,
+                completed: <int>,
+            },
+            ...
+        */
+        };
+        
+        var byStatus = {
+        /*
+            confirmed: <int>,
+            pending: <int>,
+            requested: <int>,
+            completed: <int>,
+        */
+        };
+        
+        SDCData.fetchTeams()
+        .then((teamList) => {
+            teams = teamList;
+            
+            return SDCUserAppointment.findByDate(startDate, endDate)
+        })
+        .then((appointmentList) => {
+            appointments = appointmentList;
+            appointments.forEach((row) => {
+                // Compile status counts
+                bySession[row.session] = bySession[row.session] || {};
+                bySession[row.session][row.status] = bySession[row.session][row.status] || 0;
+                bySession[row.session][row.status] += 1;
+                
+                byUser[row.user] = byUser[row.user] || {};
+                byUser[row.user][row.status] = byUser[row.user][row.status] || 0;
+                byUser[row.user][row.status] += 1;
+                
+                byStatus[row.status] = byStatus[row.status] || 0;
+                byStatus[row.status] += 1;
+            });
+            
+            
+            teams.forEach((team) => {
+                team.appointments = {};
+                
+                // embed appointment status counts for each member
+                team.members.forEach((member) => {
+                    member.appointments = byUser[ member.sdc_guid ];
+                    
+                    // sum the count totals for the team
+                    for (var status in member.appointments) {
+                        team.appointments[status] = team.appointments[status] || 0;
+                        team.appointments[status] += member.appointments[status];
+                    }
+                });
+            });
+            
+            
+            var results = [];
+            teams.forEach((team) => {
+                var row = {
+                    name: team.name,
+                    members: team.members.length,
+                    rejected: team.appointments.rejected || 0,
+                    requested: team.appointments.requested || 0,
+                    pending: team.appointments.pending || 0,
+                    confirmed: team.appointments.confirmed || 0,
+                    completed: team.appointments.completed || 0,
+                };
+                results.push(row);
+            });
+            
+            res.send(results);
+            
+        })
+        .catch((err) => {
+            console.log(err);
+            res.serverError(err.message || err);
+        });
+    
     }
     
 };

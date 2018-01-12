@@ -1,0 +1,67 @@
+<link rel="stylesheet" href="/js/webix/webix.css" />
+
+<div id="sdc-appointment-report">
+</div>
+
+<script src="/js/jquery.min.js"></script>
+<script src="/js/moment.min.js"></script>
+<script src="/js/webix/webix.js"></script>
+
+<script>
+    var now = new Date();
+    
+    webix.ui({
+        container: 'sdc-appointment-report',
+        rows: [
+            {
+                view: 'datepicker',
+                id: 'startDate',
+                label: 'Start',
+                value: now.getFullYear() + '-01-01'
+            },
+            {
+                view: 'datepicker',
+                id: 'endDate',
+                label: 'End',
+                value: now.getFullYear() + '-12-31'
+            },
+            {
+                view: 'button',
+                value: 'Go',
+                click: function() {
+                    
+                    var start = moment($$('startDate').getValue()).format('YYYY-MM-DD');
+                    var end = moment($$('endDate').getValue()).format('YYYY-MM-DD');
+                    
+                    $$('report-table').clearAll();
+                    $$('report-table').load('/opstool-sdc/sdc/appointmentsReportData?startDate='+start+'&endDate='+end);
+                    
+                }
+            },
+            {
+                view: 'spacer',
+                height: 20,
+            },
+            {
+                view: 'datatable',
+                id: 'report-table',
+                autoheight: true,
+                resizeColumn: true,
+                headermenu: true,
+                columns: [
+                    { id: 'name', header: 'Team Name', sort: 'string', width: 200 },
+                    { id: 'members', header: 'Members', sort: 'int' },
+                    { id: 'rejected', header: 'Rejected', sort: 'int' },
+                    { id: 'requested', header: 'Requested', sort: 'int' },
+                    { id: 'pending', header: 'Pending', sort: 'int' },
+                    { id: 'confirmed', header: 'Confirmed', sort: 'int' },
+                    { id: 'completed', header: 'Completed', sort: 'int' }
+                ],
+                data: [
+                ]
+                
+            },
+            
+        ]
+    });
+</script>
