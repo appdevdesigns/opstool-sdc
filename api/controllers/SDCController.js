@@ -357,6 +357,9 @@ module.exports = {
         
         var teams, appointments;
         
+        // Array of status types
+        var statuses = ['requested', 'pending', 'confirmed', 'completed', 'rejected'];
+        
         var bySession = {
         /*
             <session>: {
@@ -381,6 +384,21 @@ module.exports = {
         */
         };
         
+        var byUserSession = {
+        /*
+            <sdc_guid>: {
+                1: {
+                    confirmed: <int>,
+                    completed: <int>,
+                    ...
+                },
+                2: { ... },
+                3: { ... }
+            },
+            ...
+        */
+        };
+        
         var byStatus = {
         /*
             confirmed: <int>,
@@ -390,9 +408,23 @@ module.exports = {
         */
         };
         
+        var locations = {
+        /*
+            <location_id>: {
+                region_location_id: <int>,
+                ...
+            }
+        */
+        };
+        
         SDCData.fetchTeams()
         .then((teamList) => {
             teams = teamList;
+            
+            return LHRISAssignLocation.mapToRegion();
+        })
+        .then((locationData, regionData) => {
+            locations = locationData;
             
             return SDCUserAppointment.findByDate(startDate, endDate)
         })
@@ -410,21 +442,46 @@ module.exports = {
                 
                 byStatus[row.status] = byStatus[row.status] || 0;
                 byStatus[row.status] += 1;
+                
+                byUserSession[row.user] = byUserSession[row.user] || {};
+                byUserSession[row.user][row.status] = {
+                    1: 0,
+                    2: 0,
+                    3: 0,
+                };
+                byUserSession[row.user][row.status][row.session] += 1;
+                
             });
-            
             
             teams.forEach((team) => {
                 team.appointments = {};
                 
+                // add team region label
+                var teamLocation = locations[team.location_id];
+                var teamRegion = locations[teamLocation.region_location_id];
+                team.region = teamRegion.location_label;
+                
                 // embed appointment status counts for each member
                 team.members.forEach((member) => {
                     member.appointments = byUser[ member.sdc_guid ];
+                    member.appointmentsBySession = byUserSession[ member.sdc_guid ];
                     
                     // sum the count totals for the team
-                    for (var status in member.appointments) {
-                        team.appointments[status] = team.appointments[status] || 0;
-                        team.appointments[status] += member.appointments[status];
-                    }
+                    statuses.forEach((status) => {
+                        team.appointments[status] = team.appointments[status] || {
+                            total: 0,
+                            1: 0,
+                            2: 0,
+                            3: 0
+                        };
+                        for (var session=1; session<=3; session++) {
+                            if (member.appointments && member.appointmentsBySession[status]) {
+                                team.appointments[status].total += member.appointmentsBySession[status][session];
+                                team.appointments[status][session] += member.appointmentsBySession[status][session];
+                            }
+                        }
+                        
+                    });
                 });
             });
             
@@ -433,12 +490,26 @@ module.exports = {
             teams.forEach((team) => {
                 var row = {
                     name: team.name,
+                    region: team.region,
                     members: team.members.length,
-                    rejected: team.appointments.rejected || 0,
-                    requested: team.appointments.requested || 0,
-                    pending: team.appointments.pending || 0,
-                    confirmed: team.appointments.confirmed || 0,
-                    completed: team.appointments.completed || 0,
+                    appointments: team.appointments,
+                    
+                    confirmed1: team.appointments.confirmed[1],
+                    completed1: team.appointments.completed[1],
+                    
+                    confirmed2: team.appointments.confirmed[2],
+                    completed2: team.appointments.completed[2],
+                    
+                    confirmed3: team.appointments.confirmed[3],
+                    completed3: team.appointments.completed[3],
+                    
+                    /*
+                    rejected: team.appointments.rejected.total || 0,
+                    requested: team.appointments.requested.total || 0,
+                    pending: team.appointments.pending.total || 0,
+                    confirmed: team.appointments.confirmed.total || 0,
+                    completed: team.appointments.completed.total || 0,
+                    */
                 };
                 results.push(row);
             });

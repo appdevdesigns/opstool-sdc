@@ -171,24 +171,37 @@ module.exports = {
                     gen.gender_id, genT.gender_label,
                     team.team_id, teamT.team_label,
                     pos.position_id, posT.position_label,
-                    team.parent_id
+                    team.parent_id, location.location_id
                 FROM
                     hris_assign_team_data team
                     
+                    -- Team
                     JOIN hris_assign_team_trans teamT
                         ON team.team_id = teamT.team_id
                         AND teamT.language_code = ?
                     
+                    -- Team location
+                    JOIN hris_xref_team_location xtl
+                        ON team.team_id = xtl.team_id
+                    JOIN hris_assign_location_data location
+                        ON xtl.location_id = location.location_id
+                    -- JOIN hris_assign_location_trans locationT
+                    --    ON location.location_id = locationT.location_id
+                    --    AND locationT.language_code = ?
+                    
+                    -- Assignment
                     JOIN hris_assignment assign
                         ON assign.team_id = team.team_id
                         AND assign.assignment_enddate = '1000-01-01'
-                        
+                    
+                    -- Assignment position
                     JOIN hris_assign_position_data pos
                         ON assign.position_id = pos.position_id
                     JOIN hris_assign_position_trans posT
                         ON pos.position_id = posT.position_id
                         AND posT.language_code = ?
                     
+                    -- Ren
                     JOIN hris_ren_data ren
                         ON assign.ren_id = ren.ren_id
                         AND ren.statustype_id IN (3, 4, 5)
@@ -204,7 +217,7 @@ module.exports = {
                         AND w.worker_terminationdate = '1000-01-01'
                         
             `, 
-            [langCode, langCode, langCode], 
+            [langCode, langCode, langCode, langCode], 
             (err, list) => {
                 if (err) reject(err);
                 else if (!list || !list[0]) {
@@ -213,10 +226,10 @@ module.exports = {
                 else {
                     var teams = {};
                     var memberFields = [
-                        'ren_id', /*'ren_guid',*/ 'ren_surname', 'ren_givenname', 
+                        'ren_id', 'ren_surname', 'ren_givenname', 
                         'ren_preferredname', 'gender_id', 'gender_label',
                         'position_id', 'position_label', 'team_label',
-                        'sdc_token', 'sdc_guid'
+                        'sdc_token', 'sdc_guid',
                     ];
                     
                     // 1st pass
@@ -226,6 +239,7 @@ module.exports = {
                             id: teamID,
                             parent: row.parent_id,
                             name: row.team_label,
+                            location_id: row.location_id,
                             members: [],
                             leaders: []
                         };

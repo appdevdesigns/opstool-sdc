@@ -1,4 +1,13 @@
 <link rel="stylesheet" href="/js/webix/webix.css" />
+<style>
+    table td div[role="columnheader"] {
+        text-align: center;
+    }
+    table td div[role="columnheader"].formula {
+        font-size: .8em;
+        text-decoration: italic;
+    }
+</style>
 
 <div id="sdc-appointment-report">
 </div>
@@ -43,20 +52,144 @@
                 height: 20,
             },
             {
-                view: 'datatable',
+                view: 'treetable',
                 id: 'report-table',
                 autoheight: true,
                 resizeColumn: true,
-                headermenu: true,
+                math: true,
                 columns: [
-                    { id: 'name', header: 'Team Name', sort: 'string', width: 200 },
-                    { id: 'members', header: 'Members', sort: 'int' },
-                    { id: 'rejected', header: 'Rejected', sort: 'int' },
-                    { id: 'requested', header: 'Requested', sort: 'int' },
-                    { id: 'pending', header: 'Pending', sort: 'int' },
-                    { id: 'confirmed', header: 'Confirmed', sort: 'int' },
-                    { id: 'completed', header: 'Completed', sort: 'int' }
+                    { 
+                        adjust: true, 
+                        id: 'name', 
+                        header: ['Team Name', { content: 'textFilter' }],
+                        sort: 'string',
+						template:function(obj, common){
+							if (obj.$group) return common.treetable(obj, common) + obj.name;
+							return '&nbsp;&nbsp;&nbsp;&nbsp;' + obj.name;
+						}
+                    },
+                    { 
+                        adjust: true, 
+                        id: 'members', 
+                        header: 'Members', 
+                        sort: 'int' 
+                    },
+                    { 
+                        adjust: true, 
+                        id: 'confirmed1', 
+                        sort: 'int', 
+                        header: [{ colspan: 2, text: 'Conversation 1' }, 'Confirmed'],
+                    },
+                    { 
+                        adjust: true, 
+                        id: 'completed1', 
+                        sort: 'int', 
+                        header: [ null, 'Completed'],
+                    },
+                    { 
+                        adjust: true, 
+                        id: 'confirmed2', 
+                        header: [{ colspan: 2, text: 'Conversation 2' }, 'Confirmed'],
+                        sort: 'int' 
+                    },
+                    { 
+                        adjust: true, 
+                        id: 'completed2', 
+                        header: [null, 'Completed'], 
+                        sort: 'int' 
+                    },
+                    { 
+                        adjust: true, 
+                        id: 'confirmed3', 
+                        header: [{ colspan: 2, text: 'Conversation 3' }, 'Confirmed'],
+                        sort: 'int' 
+                    },
+                    { 
+                        adjust: true, 
+                        id: 'completed3', 
+                        header: [null, 'Completed'],
+                        sort: 'int' 
+                    },
+                    {
+                        adjust: true,
+                        id: 'total_confirmed',
+                        header: [{ colspan: 2, text: 'Totals' }, 'Confirmed'],
+                        sort: 'int',
+                        math: '[$r,confirmed1] + [$r,confirmed2] + [$r,confirmed3]'
+                    },
+                    {
+                        adjust: true,
+                        id: 'total_completed',
+                        header: [null, 'Completed'],
+                        sort: 'int',
+                        math: '[$r,completed1] + [$r,completed2] + [$r,completed3]',
+                    },
+                    {
+                        adjust: true,
+                        id: 'avg_confirmed',
+                        header: [
+                            'Avg Confirmed', 
+                            {text: 'confirmed/members', css: 'formula'}
+                        ],
+                        sort: 'int',
+                        math: '[$r,total_confirmed] / [$r,members]',
+                        format: webix.Number.numToStr({
+                            decimalDelimiter: '.',
+                            decimalSize: 2
+                        })
+                    },
+                    {
+                        adjust: true,
+                        id: 'avg_completed',
+                        header: [
+                            'Avg Completed', 
+                            {text: 'completed/members', css: 'formula'}
+                        ],
+                        sort: 'int',
+                        math: '[$r,total_completed] / [$r,members]',
+                        format: webix.Number.numToStr({
+                            decimalDelimiter: '.',
+                            decimalSize: 2
+                        })
+                    },
+                    {
+                        adjust: true,
+                        id: 'ratio',
+                        header: [
+                            'Ratio', 
+                            {text: 'completed/confirmed', css: 'formula'}
+                        ],
+                        sort: 'int',
+                        math: '[$r,total_completed] / [$r,total_confirmed] * 100',
+                        format: function(value) {
+                            if (value < 0 || isNaN(value)) value = 0;
+                            return webix.Number.numToStr({
+                                decimalDelimiter: '.',
+                                decimalSize: 1
+                            })(value) + '%';
+                        }
+                    },
                 ],
+				scheme:{
+					$group: {
+						by: "region",
+						map: {
+				            members: ['members', 'sum'],
+							confirmed1: ["confirmed1", "sum"],
+							completed1: ["completed1", "sum"],
+							confirmed2: ["confirmed2", "sum"],
+							completed2: ["completed2", "sum"],
+							confirmed3: ["confirmed3", "sum"],
+							completed3: ["completed3", "sum"],
+							name: ["region"]
+						}
+					},
+					$sort: { 
+					   by: "name", 
+					   as: "string", 
+					   dir: "asc" 
+				    }
+				},
                 data: [
                 ]
                 
