@@ -310,8 +310,9 @@ module.exports = {
      */
     generateCoachingPairs: function(teamData) {
         // Group by gender
-        var results = [];
         var byGender = {};
+        var coachGroup;
+        
         teamData.members.forEach((member) => {
             var genderID = member.gender_id;
             byGender[genderID] = byGender[genderID] || {
@@ -320,13 +321,25 @@ module.exports = {
             };
             if (member.position_id == 3 || member.position_id == 6) {
                 byGender[genderID].coach = member;
+                coachGroup = byGender[genderID];
             }
             else {
                 byGender[genderID].coachee.push(member);
             }
         });
         
+        // If any group doesn't have a coach, assign all members to the
+        // one that does have a coach.
+        for (var id in byGender) {
+            var group = byGender[id];
+            if (!group.coach && coachGroup) {
+                coachGroup.coachee = coachGroup.coachee.concat(group.coachee);
+                delete byGender[id];
+            }
+        }
+        
         // Convert to array
+        var results = [];
         for (var id in byGender) {
             results.push(byGender[id]);
         }
