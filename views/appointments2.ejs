@@ -18,7 +18,7 @@
     }
     table td div[role="columnheader"].formula {
         font-size: .8em;
-        text-decoration: italic;
+        font-style: italic;
     }
 </style>
 
@@ -35,6 +35,10 @@
 webix.ready(function() {
 
     var now = new Date();
+    var decimalFormat = webix.Number.numToStr({
+        decimalDelimiter: '.',
+        decimalSize: 2
+    });
     
     // We need a custom sum filter, because the default one will double count
     // when the tree nodes are expanded.
@@ -89,6 +93,7 @@ webix.ready(function() {
                     .done(function(data, status, xhr) {
                         // Count the totals for the footer
                         footerTotals = {
+                            members: 0,
                             confirmed1: 0,
                             confirmed2: 0,
                             confirmed3: 0,
@@ -114,6 +119,12 @@ webix.ready(function() {
                                 }
                             }
                         });
+                        footerTotals.avg_confirmed = decimalFormat(
+                            footerTotals.total_confirmed / footerTotals.members
+                        );
+                        footerTotals.avg_completed = decimalFormat(
+                            footerTotals.total_completed / footerTotals.members
+                        );
                         
                         $$('report-table').parse(data);
                     })
@@ -222,10 +233,8 @@ webix.ready(function() {
                         ],
                         sort: 'int',
                         math: '[$r,total_confirmed] / [$r,members]',
-                        format: webix.Number.numToStr({
-                            decimalDelimiter: '.',
-                            decimalSize: 2
-                        })
+                        format: decimalFormat,
+                        footer: { content: 'appointmentsTotal' },
                     },
                     {
                         adjust: true,
@@ -236,10 +245,8 @@ webix.ready(function() {
                         ],
                         sort: 'int',
                         math: '[$r,total_completed] / [$r,members]',
-                        format: webix.Number.numToStr({
-                            decimalDelimiter: '.',
-                            decimalSize: 2
-                        })
+                        format: decimalFormat,
+                        footer: { content: 'appointmentsTotal' },
                     },
                     /*
                     {
