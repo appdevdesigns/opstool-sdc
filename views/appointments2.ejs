@@ -1,5 +1,18 @@
 <link rel="stylesheet" href="/js/webix/webix.css" />
 <style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    #container {
+        height: 100%;
+        box-sizing: border-box;
+        padding: 1em;
+    }
+    #sdc-appointment-report {
+        height: 100%;
+    }
     table td div[role="columnheader"] {
         text-align: center;
     }
@@ -9,7 +22,9 @@
     }
 </style>
 
-<div id="sdc-appointment-report">
+<div id="container">
+    <div id="sdc-appointment-report">
+    </div>
 </div>
 
 <script src="/js/jquery.min.js"></script>
@@ -17,7 +32,26 @@
 <script src="/js/webix/webix.js"></script>
 
 <script>
+webix.ready(function() {
+
     var now = new Date();
+    
+    // We need a custom sum filter, because the default one will double count
+    // when the tree nodes are expanded.
+    var footerTotals = {};
+    webix.ui.datafilter.appointmentsTotal = {
+        getInputNode: function(node) {
+        },
+        setValue: function(node, value) {
+        },
+        getValue: function(node) {
+        },
+        refresh: function(master, node, value) {
+        },
+        render: function(master, column) {
+            return footerTotals[column.columnId] || 0;
+        }
+    };
     
     webix.ui({
         container: 'sdc-appointment-report',
@@ -43,7 +77,50 @@
                     var end = moment($$('endDate').getValue()).format('YYYY-MM-DD');
                     
                     $$('report-table').clearAll();
-                    $$('report-table').load('/opstool-sdc/sdc/appointmentsReportData?startDate='+start+'&endDate='+end);
+                    //$$('report-table').load('/opstool-sdc/sdc/appointmentsReportData?startDate='+start+'&endDate='+end);
+                    
+                    $.ajax({
+                        url: '/opstool-sdc/sdc/appointmentsReportData',
+                        data: { 
+                            startDate: start,
+                            endDate: end
+                        },
+                    })
+                    .done(function(data, status, xhr) {
+                        // Count the totals for the footer
+                        footerTotals = {
+                            confirmed1: 0,
+                            confirmed2: 0,
+                            confirmed3: 0,
+                            completed1: 0,
+                            completed2: 0,
+                            completed3: 0,
+                            total_confirmed: 0,
+                            total_completed: 0,
+                        };
+                        data.forEach(function(row) {
+                            for (var key in row) {
+                                var value = row[key];
+                                if (typeof value == 'number') {
+                                    footerTotals[key] = footerTotals[key] || 0;
+                                    footerTotals[key] += value;
+                                    
+                                    if (key.substring(0,3) == 'com') {
+                                        footerTotals.total_completed += value;
+                                    }
+                                    else if (key.substring(0,3) == 'con') {
+                                        footerTotals.total_confirmed += value;
+                                    }
+                                }
+                            }
+                        });
+                        
+                        $$('report-table').parse(data);
+                    })
+                    .fail(function(xhr, status, err) {
+                        console.log(err);
+                    });
+                    
                     
                 }
             },
@@ -53,8 +130,10 @@
             },
             {
                 view: 'treetable',
+                //view: 'datatable',
                 id: 'report-table',
-                autoheight: true,
+                //autoheight: true,
+                footer: true,
                 resizeColumn: true,
                 math: true,
                 columns: [
@@ -66,56 +145,65 @@
 						template:function(obj, common){
 							if (obj.$group) return common.treetable(obj, common) + obj.name;
 							return '&nbsp;&nbsp;&nbsp;&nbsp;' + obj.name;
-						}
+						},
+						footer: 'Totals:'
                     },
                     { 
                         adjust: true, 
                         id: 'members', 
                         header: 'Members', 
-                        sort: 'int' 
+                        sort: 'int',
+                        footer: { content: 'appointmentsTotal' },
                     },
                     { 
                         adjust: true, 
                         id: 'confirmed1', 
                         sort: 'int', 
                         header: [{ colspan: 2, text: 'Conversation 1' }, 'Confirmed'],
+                        footer: { content: 'appointmentsTotal' },
                     },
                     { 
                         adjust: true, 
                         id: 'completed1', 
                         sort: 'int', 
                         header: [ null, 'Completed'],
+                        footer: { content: 'appointmentsTotal' },
                     },
                     { 
                         adjust: true, 
                         id: 'confirmed2', 
                         header: [{ colspan: 2, text: 'Conversation 2' }, 'Confirmed'],
-                        sort: 'int' 
+                        sort: 'int',
+                        footer: { content: 'appointmentsTotal' },
                     },
                     { 
                         adjust: true, 
                         id: 'completed2', 
                         header: [null, 'Completed'], 
-                        sort: 'int' 
+                        sort: 'int',
+                        footer: { content: 'appointmentsTotal' },
                     },
                     { 
                         adjust: true, 
                         id: 'confirmed3', 
                         header: [{ colspan: 2, text: 'Conversation 3' }, 'Confirmed'],
-                        sort: 'int' 
+                        sort: 'int',
+                        footer: { content: 'appointmentsTotal' },
                     },
                     { 
                         adjust: true, 
                         id: 'completed3', 
                         header: [null, 'Completed'],
-                        sort: 'int' 
+                        sort: 'int',
+                        footer: { content: 'appointmentsTotal' },
                     },
                     {
                         adjust: true,
                         id: 'total_confirmed',
                         header: [{ colspan: 2, text: 'Totals' }, 'Confirmed'],
                         sort: 'int',
-                        math: '[$r,confirmed1] + [$r,confirmed2] + [$r,confirmed3]'
+                        math: '[$r,confirmed1] + [$r,confirmed2] + [$r,confirmed3]',
+                        footer: { content: 'appointmentsTotal' },
                     },
                     {
                         adjust: true,
@@ -123,6 +211,7 @@
                         header: [null, 'Completed'],
                         sort: 'int',
                         math: '[$r,completed1] + [$r,completed2] + [$r,completed3]',
+                        footer: { content: 'appointmentsTotal' },
                     },
                     {
                         adjust: true,
@@ -152,6 +241,7 @@
                             decimalSize: 2
                         })
                     },
+                    /*
                     {
                         adjust: true,
                         id: 'ratio',
@@ -169,6 +259,7 @@
                             })(value) + '%';
                         }
                     },
+                    */
                 ],
 				scheme:{
 					$group: {
@@ -197,4 +288,6 @@
             
         ]
     });
+
+});
 </script>
