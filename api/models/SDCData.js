@@ -185,14 +185,15 @@ module.exports = {
                         ON team.team_id = xtl.team_id
                     JOIN hris_assign_location_data location
                         ON xtl.location_id = location.location_id
-                    -- JOIN hris_assign_location_trans locationT
-                    --    ON location.location_id = locationT.location_id
-                    --    AND locationT.language_code = ?
                     
                     -- Assignment
                     JOIN hris_assignment assign
                         ON assign.team_id = team.team_id
-                        AND assign.assignment_enddate = '1000-01-01'
+                        AND assign.assignment_isprimary
+                        AND (
+                            assign.assignment_enddate = '1000-01-01'
+                            OR assign.assignment_enddate > NOW()
+                        )
                     
                     -- Assignment position
                     JOIN hris_assign_position_data pos
@@ -215,6 +216,10 @@ module.exports = {
                         ON ren.ren_id = w.ren_id
                         AND w.worker_dateleftchinamin = '1000-01-01'
                         AND w.worker_terminationdate = '1000-01-01'
+                    
+                    -- Ensure only one result per person
+                    GROUP BY
+                        ren.ren_id
                         
             `, 
             [langCode, langCode, langCode, langCode], 
