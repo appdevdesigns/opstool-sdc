@@ -160,7 +160,7 @@ module.exports = {
      */
     fetchTeams: function(langCode='en') {
         return new Promise((resolve, reject) => {
-            
+                        
             var results = [];
             LHRISRen.query(`
                 
@@ -171,7 +171,8 @@ module.exports = {
                     gen.gender_id, genT.gender_label,
                     team.team_id, teamT.team_label,
                     pos.position_id, posT.position_label,
-                    team.parent_id, location.location_id
+                    team.parent_id, location.location_id,
+                    mccT.mcc_label AS mcc
                 FROM
                     hris_assign_team_data team
                     
@@ -185,6 +186,11 @@ module.exports = {
                         ON team.team_id = xtl.team_id
                     JOIN hris_assign_location_data location
                         ON xtl.location_id = location.location_id
+                        
+                    -- Team MCC label
+                    JOIN hris_assign_mcc_trans mccT
+                        ON team.mcc_id = mccT.mcc_id
+                        AND mccT.language_code = ?
                     
                     -- Assignment
                     JOIN hris_assignment assign
@@ -222,7 +228,7 @@ module.exports = {
                         ren.ren_id
                         
             `, 
-            [langCode, langCode, langCode, langCode], 
+            [langCode, langCode, langCode, langCode, langCode], 
             (err, list) => {
                 if (err) reject(err);
                 else if (!list || !list[0]) {
@@ -234,7 +240,7 @@ module.exports = {
                         'ren_id', 'ren_surname', 'ren_givenname', 
                         'ren_preferredname', 'gender_id', 'gender_label',
                         'position_id', 'position_label', 'team_label',
-                        'sdc_token', 'sdc_guid',
+                        'sdc_token', 'sdc_guid'
                     ];
                     
                     // 1st pass
@@ -245,6 +251,7 @@ module.exports = {
                             parent: row.parent_id,
                             name: row.team_label,
                             location_id: row.location_id,
+                            mcc: row.mcc,
                             members: [],
                             leaders: []
                         };
@@ -277,11 +284,23 @@ module.exports = {
                         }
                     }
                     
-                    // Convert results into array
-                    for (var id in teams) {
-                        results.push(teams[id]);
-                    }
-                    resolve(results);
+                    LHRISAssignLocation.mapToRegion()
+                    .done((locations, regions) => {
+                        
+                        // add team region labels
+                        for (var id in teams) {
+                            var team = teams[id];
+                            var teamLocation = locations[team.location_id];
+                            var teamRegion = locations[teamLocation.region_location_id];
+                            team.region = teamRegion.location_label;
+                        }
+                        
+                        // Convert results into array
+                        for (var id in teams) {
+                            results.push(teams[id]);
+                        }
+                        resolve(results);
+                    });
                 }
             });
             

@@ -232,12 +232,31 @@ module.exports = {
                 throw new Error('No teams found');
             }
             else {
+                var regions = [];
+                var mccs = [];
+                
                 teams.forEach((team) => {
                     team.coachingPairs = SDCData.generateCoachingPairs(team);
+                    
+                    var region = team.region;
+                    if (regions.indexOf(region) < 0) {
+                        regions.push(region);
+                    }
+                    
+                    var mcc = team.mcc;
+                    if (mccs.indexOf(mcc) < 0) {
+                        mccs.push(mcc);
+                    }
                 });
+                
+                regions.sort();
+                mccs.sort();
+                
                 res.view('opstool-sdc/report', {
                     title: 'SDC teams report',
                     teams: teams,
+                    regions: regions,
+                    mccs: mccs
                 });
             }
         })
@@ -408,23 +427,9 @@ module.exports = {
         */
         };
         
-        var locations = {
-        /*
-            <location_id>: {
-                region_location_id: <int>,
-                ...
-            }
-        */
-        };
-        
         SDCData.fetchTeams()
         .then((teamList) => {
             teams = teamList;
-            
-            return LHRISAssignLocation.mapToRegion();
-        })
-        .then((locationData, regionData) => {
-            locations = locationData;
             
             return SDCUserAppointment.findByDate(startDate, endDate)
         })
@@ -455,11 +460,6 @@ module.exports = {
             
             teams.forEach((team) => {
                 team.appointments = {};
-                
-                // add team region label
-                var teamLocation = locations[team.location_id];
-                var teamRegion = locations[teamLocation.region_location_id];
-                team.region = teamRegion.location_label;
                 
                 // embed appointment status counts for each member
                 team.members.forEach((member) => {

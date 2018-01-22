@@ -1,8 +1,13 @@
+<link rel="stylesheet" href="/styles/font-awesome.css" />
 <style>
     body {
         font-family: sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+    #report {
         max-width: 50em;
-        margin: 1em auto;
+        margin: 3.8em auto 8em;
     }
     .team {
         border-top: 1px solid black;
@@ -39,11 +44,71 @@
     .derived {
         color: blue;
     }
+    
+    ul.filters {
+        width: 100%;
+        margin: 0;
+        padding: .5em 0;
+        text-align: center;
+        position: fixed;
+        z-index: 1;
+        background: white;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-padding-start: 0;
+        -webkit-margin-before: 0;
+        -webkit-margin-after: 0;
+    }
+    ul.filters li {
+        display: inline-block;
+        padding: 5px;
+        border: solid 1px black;
+        margin: .5em;
+        cursor: pointer;
+        
+        background: #eee;
+        color: #777;
+    }
+    ul.filters li.active {
+        background: white;
+        color: black;
+    }
+    ul.filters li.clear {
+        background: transparent;
+        color: black;
+        border: none;
+    }
+    
+    #regions {
+        top: 0;
+        box-shadow: rgba(70,70,70,.6) 0 3px 8px;
+    }
+    #mccs {
+        bottom: 0;
+        box-shadow: rgba(70,70,70,.6) 0 -3px 8px;
+    }
+    
 </style>
+
+<ul class="filters" id="regions">
+    <% regions.forEach((region) => { %>
+        <li class="active"><%- region %></li>
+    <% }) %>
+    <li class="clear"><i class="fa fa-times"></i></li>
+</ul>
+
+<ul class="filters" id="mccs">
+    <% mccs.forEach((mcc) => { %>
+        <li class="active"><%- mcc %></li>
+    <% }) %>
+    <li class="clear"><i class="fa fa-times"></i></li>
+</ul>
+
+<div id="report">
 
 <% teams.forEach((team) => { %>
 
-    <div class="team">
+    <div class="team" region="<%- team.region %>" mcc="<%- team.mcc %>">
         <h3><%- team.name %></h3>
         <% team.coachingPairs.forEach((item) => { %>
             
@@ -81,3 +146,59 @@
     
 <% }) %>
         
+</div>
+
+<script src="/js/jquery.min.js"></script>
+<script>
+    
+    function filter() {
+        var regions = [];
+        $('#regions li.active').each(function() {
+            regions.push($(this).text());
+        });
+        
+        var mccs = [];
+        $('#mccs li.active').each(function() {
+            mccs.push($(this).text());
+        });
+        
+        $('#report .team').each(function() {
+            var $team = $(this);
+            var isVisible = true;
+            
+            if (regions.indexOf($team.attr('region')) < 0) {
+                isVisible = false;
+            }
+            if (mccs.indexOf($team.attr('mcc')) < 0) {
+                isVisible = false;
+            }
+            
+            if (isVisible) {
+                $team.show();
+            }
+            else {
+                $team.hide();
+            }
+        });
+    }
+    
+    $('ul.filters li:not(.clear)')
+    .on('click', function() {
+        var $li = $(this);
+        $li.toggleClass('active');
+        filter();
+    })
+    .on('dblclick', function() {
+        var $li = $(this);
+        $li.siblings().removeClass('active');
+        $li.addClass('active');
+        filter();
+    });
+    
+    $('ul.filters li.clear').on('click', function() {
+        $(this).siblings().removeClass('active');
+        filter();
+    });
+    
+    
+</script>
