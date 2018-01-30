@@ -12,6 +12,80 @@ setInterval(() => {
 
 module.exports = {
     
+    migrateFromHRIS: function() {
+        return new Promise((resolve, reject) => {
+            var hrisData = {
+            /*
+                <ren_id>: {
+                    sdc_token: {string},
+                    sdc_guid: {string},
+                },
+                ...
+            */
+            };
+            
+            async.series([
+                (next) => {
+                    LHRISWorker.query(`
+                        
+                        SELECT
+                            ren_id, sdc_token, sdc_guid
+                        FROM
+                            hris_worker
+                        WHERE
+                            sdc_guid IS NOT NULL
+                        
+                    `, [], (err, list) => {
+                        if (err) next(err);
+                        else {
+                            list.forEach((row) => {
+                                hrisData[row.ren_id] = {
+                                    sdc_token: row.sdc_token,
+                                    sdc_guid: row.sdc_guid,
+                                };
+                            });
+                            console.log('Migrating SDC data from HRIS worker table');
+                            console.log(Object.keys(hrisData).length + ' rows');
+                            next();
+                        }
+                    });
+                },
+                
+                (next) => {
+                    async.eachOf(hrisData, (row, renID, rowDone) => {
+                        SDCData.query(`
+                            
+                            UPDATE sdc
+                            SET
+                                sdc_token = ?,
+                                sdc_guid = ?
+                            WHERE
+                                ren_id = ?
+                            
+                        `, [row.sdc_token, row.sdc_guid, renID], (err) => {
+                            if (err) rowDone(err);
+                            else rowDone();
+                        });
+                    }, (err) => {
+                        if (err) next(err);
+                        else next();
+                    });
+                },
+                
+            ], (err) => {
+                if (err) {
+                    console.log('Error', err);
+                    reject(err);
+                }
+                else {
+                    console.log('Completed');
+                    resolve();
+                }
+            });
+        });
+    },
+    
+    
     /**
      * Push SDC data to the public server.
      */

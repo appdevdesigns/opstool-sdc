@@ -28,8 +28,19 @@ module.exports = {
             size: 11,
         },
         
+        // QR code token between user & VPN server
         token_qr: {
-            type: 'text',
+            type: 'mediumtext',
+        },
+        
+        // primary key on the client side app
+        sdc_guid: {
+            type: 'mediumtext',
+        },
+        
+        // secret authentication token between client app & public server
+        sdc_token: {
+            type: 'mediumtext',
         },
         
     },
@@ -43,6 +54,107 @@ module.exports = {
     ////
     //// Model class methods
     ////
+    
+    
+    /**
+     * Initialize SDC accounts for new users from HRIS.
+     *
+     * @return {Promise}
+     */
+    initAccounts: function() {
+        return new Promise((resolve, reject) => {
+            var hrisRen = [];
+            var sdcUsers = [];
+            
+            async.series([
+                (next) => {
+                    LHRISWorker.query(`
+                        SELECT
+                            ren.ren_id
+                        FROM
+                            hris_assign_team_data team
+                            
+                            -- Assignment
+                            JOIN hris_assignment assign
+                                ON assign.team_id = team.team_id
+                                AND assign.assignment_isprimary
+                                AND (
+                                    assign.assignment_enddate = '1000-01-01'
+                                    OR assign.assignment_enddate > NOW()
+                                )
+                            
+                            -- Ren
+                            JOIN hris_ren_data ren
+                                ON assign.ren_id = ren.ren_id
+                                AND ren.statustype_id IN (3, 4, 5)
+                            
+                            JOIN hris_worker w
+                                ON ren.ren_id = w.ren_id
+                                AND w.worker_dateleftchinamin = '1000-01-01'
+                                AND w.worker_terminationdate = '1000-01-01'
+                            
+                            -- Ensure only one result per person
+                            GROUP BY
+                                ren.ren_id
+                    `, [], (err, list) => {
+                        if (err) next(err);
+                        else {
+                            hrisRen = list.map(x => x.ren_id) || [];
+                            next();
+                        }
+                    });
+                },
+                
+                (next) => {
+                    SDCData.query(`
+                        SELECT ren_id
+                        FROM sdc
+                    `, [], (err, list) => {
+                        if (err) next(err);
+                        else {
+                            sdcUsers = list.map(x => x.ren_id) || [];
+                            next();
+                        }
+                    });
+                },
+                
+                (next) => {
+                    var diff = _.difference(hrisRen, sdcUsers);
+                    console.log('Initializing ' + diff.length + ' accounts...');
+                    async.each(diff, (renID, nextRen) => {
+                        SDCData.query(`
+                            
+                            INSERT INTO sdc
+                            SET
+                                ren_id = ?,
+                                sdc_guid = UUID(),
+                                sdc_token = SHA2(CONCAT(RAND(), UUID()), 224),
+                                token_qr = SHA2(CONCAT(UUID(), RAND()), 224)
+                            
+                        `, [renID], (err) => {
+                            if (err) nextRen(err);
+                            else nextRen();
+                        });
+                        
+                    }, (err) => {
+                        if (err) next(err);
+                        else next();
+                    });
+                }
+            
+            ], (err) => {
+                if (err) {
+                    console.log(err);
+                    reject(err);
+                }
+                else {
+                    console.log('done.');
+                    resolve();
+                }
+            });
+        
+        });
+    },
     
     
     /**
