@@ -163,7 +163,8 @@ module.exports = {
      *      Resolves with a basic {object}
      *      or rejects with an {error}.
      */
-    findAuthTokenByGUID: function(renGUID) {
+    /*
+    DEPRECATED findAuthTokenByGUID: function(renGUID) {
         return new Promise((resolve, reject) => {
             LHRISWorker.query(`
                 
@@ -189,6 +190,7 @@ module.exports = {
             });
         });
     },
+    */
     
     /**
      * @param {integer} renID
