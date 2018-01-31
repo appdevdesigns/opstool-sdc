@@ -68,6 +68,7 @@ module.exports = {
             
             async.series([
                 (next) => {
+                    // See LHRISWorker.activeAssignedWorkers()
                     LHRISWorker.query(`
                         SELECT
                             ren.ren_id
@@ -200,6 +201,7 @@ module.exports = {
      */
     findAuthTokenByRenID: function(renID) {
         return new Promise((resolve, reject) => {
+            /*
             LHRISWorker.query(`
                 
                 SELECT
@@ -212,6 +214,17 @@ module.exports = {
                 WHERE
                     r.ren_id = ?
                     
+            `
+            */
+            SDCData.query(`
+                
+                SELECT
+                    sdc_token, sdc_guid
+                FROM
+                    sdc
+                WHERE
+                    ren_id = ?
+                
             `, [renID], (err, list) => {
                 if (err) reject(err);
                 else if (!list || !list[0]) reject (new Error('HRIS worker info not found'));
@@ -274,148 +287,102 @@ module.exports = {
      */
     fetchTeams: function(langCode='en') {
         return new Promise((resolve, reject) => {
-                        
-            var results = [];
-            LHRISRen.query(`
+            var teams = {};
+            var sdcByRenID = {};
+            
+            SDCData.find()
+            .then((list) => {
+                list.forEach((row) => {
+                    var renID = row.ren_id;
+                    sdcByRenID[renID] = row;
+                });
                 
-                SELECT
-                    w.sdc_token, w.sdc_guid, 
-                    ren.ren_id, ren.ren_guid,
-                    ren.ren_surname, ren.ren_givenname, ren.ren_preferredname,
-                    gen.gender_id, genT.gender_label,
-                    team.team_id, teamT.team_label,
-                    pos.position_id, posT.position_label,
-                    team.parent_id, location.location_id,
-                    mccT.mcc_label AS mcc
-                FROM
-                    hris_assign_team_data team
+                return LHRISWorker.activeAssignedWorkers(langCode);
+            })
+            .then((list) => {
+                var memberFields = [
+                    // Ren info
+                    'ren_id', 'ren_surname', 'ren_givenname', 
+                    'ren_preferredname', 'gender_id', 'gender_label',
                     
-                    -- Team
-                    JOIN hris_assign_team_trans teamT
-                        ON team.team_id = teamT.team_id
-                        AND teamT.language_code = ?
+                    // Assignment info
+                    'position_id', 'position_label', 'team_label',
                     
-                    -- Team location
-                    JOIN hris_xref_team_location xtl
-                        ON team.team_id = xtl.team_id
-                    JOIN hris_assign_location_data location
-                        ON xtl.location_id = location.location_id
-                        
-                    -- Team MCC label
-                    JOIN hris_assign_mcc_trans mccT
-                        ON team.mcc_id = mccT.mcc_id
-                        AND mccT.language_code = ?
+                    // SDC info
+                    'sdc_token', 'sdc_guid'
+                ];
+                
+                // 1st pass
+                list.forEach((row) => {
+                    var renID = row.ren_id;
+                    var teamID = row.team_id;
+                    teams[teamID] = teams[teamID] || {
+                        id: teamID,
+                        parent: row.parent_id,
+                        name: row.team_label,
+                        location_id: row.location_id,
+                        mcc: row.mcc,
+                        members: [],
+                        leaders: []
+                    };
                     
-                    -- Assignment
-                    JOIN hris_assignment assign
-                        ON assign.team_id = team.team_id
-                        AND assign.assignment_isprimary
-                        AND (
-                            assign.assignment_enddate = '1000-01-01'
-                            OR assign.assignment_enddate > NOW()
-                        )
-                    
-                    -- Assignment position
-                    JOIN hris_assign_position_data pos
-                        ON assign.position_id = pos.position_id
-                    JOIN hris_assign_position_trans posT
-                        ON pos.position_id = posT.position_id
-                        AND posT.language_code = ?
-                    
-                    -- Ren
-                    JOIN hris_ren_data ren
-                        ON assign.ren_id = ren.ren_id
-                        AND ren.statustype_id IN (3, 4, 5)
-                    JOIN hris_gender_data gen
-                        ON ren.gender_id = gen.gender_id
-                    JOIN hris_gender_trans genT
-                        ON gen.gender_id = genT.gender_id
-                        AND genT.language_code = ?
-                    
-                    JOIN hris_worker w
-                        ON ren.ren_id = w.ren_id
-                        AND w.worker_dateleftchinamin = '1000-01-01'
-                        AND w.worker_terminationdate = '1000-01-01'
-                    
-                    -- Ensure only one result per person
-                    GROUP BY
-                        ren.ren_id
-                        
-            `, 
-            [langCode, langCode, langCode, langCode, langCode], 
-            (err, list) => {
-                if (err) reject(err);
-                else if (!list || !list[0]) {
-                    reject(new Error('No HRIS data found'));
-                }
-                else {
-                    var teams = {};
-                    var memberFields = [
-                        'ren_id', 'ren_surname', 'ren_givenname', 
-                        'ren_preferredname', 'gender_id', 'gender_label',
-                        'position_id', 'position_label', 'team_label',
-                        'sdc_token', 'sdc_guid'
-                    ];
-                    
-                    // 1st pass
-                    list.forEach((row) => {
-                        var teamID = row.team_id;
-                        teams[teamID] = teams[teamID] || {
-                            id: teamID,
-                            parent: row.parent_id,
-                            name: row.team_label,
-                            location_id: row.location_id,
-                            mcc: row.mcc,
-                            members: [],
-                            leaders: []
-                        };
-                        
-                        var member = {};
-                        memberFields.forEach((fieldName) => {
+                    var member = {};
+                    memberFields.forEach((fieldName) => {
+                        // Merge SDC info into member data
+                        if (sdcByRenID[renID][fieldName]) {
+                            member[fieldName] = sdcByRenID[renID][fieldName];
+                        }
+                        // Merge worker & ren info into member data
+                        else if (row[fieldName]) {
                             member[fieldName] = row[fieldName];
-                        });
-                        teams[teamID].members.push(member);
-                        
-                        if (member.position_id == 3 || member.position_id == 6) {
-                            teams[teamID].leaders.push(member);
                         }
                     });
                     
-                    // 2nd pass: team leaders into parent teams
-                    for (var id in teams) {
-                        var team = teams[id];
-                        var hasLeaders = team.leaders.length > 0;
-                        var parentTeam = teams[team.parent || 0];
-                        
-                        if (hasLeaders && parentTeam) {
-                            team.leaders.forEach((leader) => {
-                                var member = _.clone(leader);
-                                member.position_id = 4; // member
-                                member.position_label = member.team_label;
-                                member.derived = true;
-                                parentTeam.members.push(member);
-                            });
-                        }
+                    teams[teamID].members.push(member);
+                    
+                    if (member.position_id == 3 || member.position_id == 6) {
+                        teams[teamID].leaders.push(member);
                     }
+                });
+                
+                // 2nd pass: team leaders into parent teams
+                for (var id in teams) {
+                    var team = teams[id];
+                    var hasLeaders = team.leaders.length > 0;
+                    var parentTeam = teams[team.parent || 0];
                     
-                    LHRISAssignLocation.mapToRegion()
-                    .done((locations, regions) => {
-                        
-                        // add team region labels
-                        for (var id in teams) {
-                            var team = teams[id];
-                            var teamLocation = locations[team.location_id];
-                            var teamRegion = locations[teamLocation.region_location_id];
-                            team.region = teamRegion.location_label;
-                        }
-                        
-                        // Convert results into array
-                        for (var id in teams) {
-                            results.push(teams[id]);
-                        }
-                        resolve(results);
-                    });
+                    if (hasLeaders && parentTeam) {
+                        team.leaders.forEach((leader) => {
+                            var member = _.clone(leader);
+                            member.position_id = 4; // member
+                            member.position_label = member.team_label;
+                            member.derived = true;
+                            parentTeam.members.push(member);
+                        });
+                    }
                 }
+                
+                return LHRISAssignLocation.mapToRegion();
+            })
+            .then((locations, regions) => {
+                // add team region labels
+                for (var id in teams) {
+                    var team = teams[id];
+                    var teamLocation = locations[team.location_id];
+                    var teamRegion = locations[teamLocation.region_location_id];
+                    team.region = teamRegion.location_label;
+                }
+                
+                // Convert results into array
+                var results = [];
+                for (var id in teams) {
+                    results.push(teams[id]);
+                }
+                resolve(results);
+            })
+            .catch((err) => {
+                console.log('SDCData.fetchTeams() error', err);
+                reject(err);
             });
             
         });
