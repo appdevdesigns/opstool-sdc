@@ -1,5 +1,11 @@
 /**
  * SDCData
+ * 
+ * This model's table stores basic user information for accessing the SDC mobile
+ * app. However, most of the advanced information is derived from assignments
+ * and relationships within the HRIS. The model class methods help to extract
+ * that information and manipulate it into a useable format.
+ *
  * @module      :: Model
  */
 
@@ -28,7 +34,7 @@ module.exports = {
             size: 11,
         },
         
-        // QR code token between user & VPN server
+        // token for a user to view their own QR code on the VPN
         token_qr: {
             type: 'mediumtext',
         },
@@ -68,7 +74,8 @@ module.exports = {
             
             async.series([
                 (next) => {
-                    // See LHRISWorker.activeAssignedWorkers()
+                    // Find active & assigned workers in HRIS.
+                    // See also LHRISWorker.activeAssignedWorkers()
                     LHRISWorker.query(`
                         SELECT
                             ren.ren_id
@@ -107,6 +114,7 @@ module.exports = {
                 },
                 
                 (next) => {
+                    // Find existing SDC users
                     SDCData.query(`
                         SELECT ren_id
                         FROM sdc
@@ -120,8 +128,13 @@ module.exports = {
                 },
                 
                 (next) => {
+                    // Add new HRIS users to SDC table
+                    // (we have to do this the long way because the HRIS may
+                    //  be on a separate server from the local DB)
                     var diff = _.difference(hrisRen, sdcUsers);
-                    console.log('Initializing ' + diff.length + ' accounts...');
+                    if (diff.length > 0) {
+                        console.log('Initializing ' + diff.length + ' SDC accounts...');
+                    }
                     async.each(diff, (renID, nextRen) => {
                         SDCData.query(`
                             
@@ -139,6 +152,40 @@ module.exports = {
                         
                     }, (err) => {
                         if (err) next(err);
+                        else next();
+                    });
+                },
+                
+                (next) => {
+                    // Make sure Relay has latest HRIS users
+                    RelayUser.initializeFromHRIS()
+                    .then(() => {
+                        next();
+                    })
+                    .catch(next);
+                },
+                
+                (next) => {
+                    // Add new SDC users to Relay Application Users
+                    SDCData.query(`
+                        
+                        INSERT INTO relay_application_user
+                        (ren_id, user, application)
+                        (
+                            -- This finds SDC users who do not have Relay Application accounts
+                            SELECT
+                                sdc.ren_id, sdc_guid, 'sdc'
+                            FROM
+                                sdc
+                                LEFT JOIN relay_application_user au
+                                    ON sdc.ren_id = au.ren_id
+                                    AND au.application = 'sdc'
+                            WHERE
+                                au.id IS NULL
+                        )
+                        
+                    `, [], (err) => {
+                        if (err) nex(err);
                         else next();
                     });
                 }
@@ -159,41 +206,6 @@ module.exports = {
     
     
     /**
-     * @param {string} renGUID
-     * @return {Promise}
-     *      Resolves with a basic {object}
-     *      or rejects with an {error}.
-     */
-    /*
-    DEPRECATED findAuthTokenByGUID: function(renGUID) {
-        return new Promise((resolve, reject) => {
-            LHRISWorker.query(`
-                
-                SELECT
-                    w.sdc_token,
-                    w.sdc_guid,
-                    r.ren_id
-                FROM
-                    hris_ren_data r
-                    JOIN hris_worker w
-                        ON r.ren_id = w.ren_id
-                WHERE
-                    r.ren_guid = ?
-                    
-            `, [renGUID], (err, list) => {
-                if (err) reject(err);
-                else if (!list || !list[0]) reject (new Error('HRIS worker info not found'));
-                else resolve({
-                    sdcGUID: list[0].sdc_guid,
-                    authToken: list[0].sdc_token,
-                    renID: list[0].ren_id
-                });
-            });
-        });
-    },
-    */
-    
-    /**
      * @param {integer} renID
      * @return {Promise}
      *      Resolves with a basic {object}
@@ -201,21 +213,6 @@ module.exports = {
      */
     findAuthTokenByRenID: function(renID) {
         return new Promise((resolve, reject) => {
-            /*
-            LHRISWorker.query(`
-                
-                SELECT
-                    w.sdc_token,
-                    w.sdc_guid
-                FROM
-                    hris_ren_data r
-                    JOIN hris_worker w
-                        ON r.ren_id = w.ren_id
-                WHERE
-                    r.ren_id = ?
-                    
-            `
-            */
             SDCData.query(`
                 
                 SELECT
@@ -390,6 +387,9 @@ module.exports = {
     
     
     /**
+     * Takes one result of fetchTeams() and organizes team members into coach
+     * and coachee relationships according to their gender and leadership role.
+     *
      * @param {Object} teamData
      *      One element from the results of fetchTeams()
      * @return {Array}
@@ -454,6 +454,8 @@ module.exports = {
     
     
     /**
+     * Fetches the info and relationships of a given SDC user.
+     *
      * @param {string} [guidFilter]
      *      Only return results for this SDC GUID.
      *      Default is no filter.
@@ -462,6 +464,10 @@ module.exports = {
      *      in addition to the contact IDs.
      *      Default is false.
      * @return {Promise}
+     *      {
+     *          users: { ... },
+     *          relationships: [ ... ]
+     *      }
      */
     generateSDCData: function(guidFilter=null, includeNames=false) {
         return new Promise((resolve, reject) => {
