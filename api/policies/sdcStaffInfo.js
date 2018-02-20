@@ -3,15 +3,7 @@ module.exports = function(req, res, next) {
     // CAS eaguid
     var viewerGUID = req.user.GUID();
     
-    // For testing only
-    // !! DISABLE THIS IN PRODUCTION !!
-    console.log('REMEBER TO DISABLE GUID OVERRIDE IN sdcStaffInfo.js');
-    var debugGUID = req.param('guid');
-    if (debugGUID) {
-        viewerGUID = req.param('guid');
-    }
-    
-    // Fetch the staff's renGUID
+    // Fetch the staff's renGUID & renID
     LHRISRen.query(`
         
         SELECT
@@ -27,12 +19,6 @@ module.exports = function(req, res, next) {
         if (err) next(err);
         else if (!list || !list[0]) {
             res.status(404).send('Could not find your HRIS info');
-            /*
-            // For demoing. If actual user has no staff data
-            // then try again with an example staff.
-            req.params.guid = 'john.smith';
-            return module.exports(req, res, next);
-            */
         }
         else {
             req.sdc = req.sdc || {};
