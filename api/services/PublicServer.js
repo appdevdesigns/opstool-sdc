@@ -92,36 +92,50 @@ module.exports = {
     push: function() {
         var sdc = sails.config.sdc || {};
         if (!sdc.url) {
-            console.log('No SDC server url found. Aborting data push.');
+            sails.log.warn('No SDC server url found. Aborting data push.');
             return;
         }
         
+        var userData, relayData;
+        
+        // Get latest user data
         SDCData.generateSDCData(null, true)
-        .then((data) => {            
-            request.post({
-                url: sdc.url + '/data_in',
-                headers: {
-                    'Authorization': sdc.secret,
-                    'Content-Type': 'application/json; charset=utf-8',
-                },
-                body: JSON.stringify({
-                    users: data.users
-                }),
-                callback: (err, res, body) => {
-                    if (err) throw err;
-                    else if (res.statusCode != 200) {
-                        console.log('Users sent:', data.users);
-                        console.log('SDC server push received status ' + res.statusCode);
-                        console.log(body);
+        .then((data) => {
+            userData = data.users;
+            
+            return RelayData.exportData('sdc');
+        })
+        .then((data) => {
+            relayData = data;
+            
+            return new Promise((resolve, reject) => {
+                request.post({
+                    url: sdc.url + '/data_in',
+                    headers: {
+                        'Authorization': sdc.secret,
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify({
+                        users: userData,
+                        relay: relayData
+                    }),
+                    callback: (err, res, body) => {
+                        if (err) reject(err);
+                        else if (res.statusCode != 200) {
+                            sails.log.verbose('Users sent:', data.users);
+                            sails.log.verbose(body);
+                            reject(new Error('SDC server push received status ' + res.statusCode));
+                        }
+                        else {
+                            sails.log('SDC server push succeeded');
+                            resolve();
+                        }
                     }
-                    else {
-                        console.log('SDC server push succeeded');
-                    }
-                }
+                });
             });
         })
         .catch((err) => {
-            console.log('SDC server push error', err);
+            sails.log.error('SDC server push error', err);
         });
     },
     
@@ -129,54 +143,60 @@ module.exports = {
     pull: function() {
         var sdc = sails.config.sdc || {};
         if (!sdc.url) {
-            console.log('No SDC server url found. Aborting data push.');
+            sails.log.warn('No SDC server url found. Aborting data pull.');
             return;
         }
         
-        console.log('Fetching data from SDC server...');
+        sails.log('Fetching data from SDC server...');
         
-        try {
-            request.get({
-                url: sdc.url + '/data_out',
-                headers: {
-                    'Authorization': sdc.secret,
-                    'Content-Type': 'application/json; charset=utf-8',
-                },
-                callback: (err, res, body) => {
+        request.get({
+            url: sdc.url + '/data_out',
+            headers: {
+                'Authorization': sdc.secret,
+                'Content-Type': 'application/json; charset=utf-8',
+            },
+            callback: (err, res, body) => {
+                
+                var appointmentData, relayData;
+                
+                Promise.resolve()
+                .then(() => {
                     if (err) throw err;
-                    else if (res.statusCode != 200) {
+                    if (res.statusCode != 200) {
                         console.log(body);
                         throw new Error('SDC server pull received status ' + res.statusCode);
                     }
-                    else {
-                        console.log('Parsing data');
-                        var data;
-                        data = JSON.parse(body);
-                        if (!data.appointment || !data.user_appointment) {
-                            throw new Error('Expected appointment data not found');
-                        }
-                        
-                        if (data) {
-                            SDCAppointment.importData(data.appointment)
-                            .then(() => {
-                                console.log('Imported into sdc_appointment');
-                                return SDCUserAppointment.importData(data.user_appointment);
-                            })
-                            .then(() => {
-                                console.log('Imported into sdc_user_appointment');
-                                console.log('Import complete');
-                            })
-                            .catch((err) => {
-                                console.log('Import error 1', err);
-                            });
-                        }
+                    
+                    sails.log.verbose('- Parsing data');
+                    var data = JSON.parse(body);
+                    appointmentData = data.appointments;
+                    relayData = data.relay;
+                    
+                    if (!appointmentData.appointment || !appointmentData.user_appointment) {
+                        throw new Error('Expected appointment data not found');
                     }
-                }
-            });
-            
-        } catch (err) {
-            console.log('Import error 2', err);
-        }
+                    return SDCAppointment.importData(appointmentData.appointment);
+                })
+                .then(() => {
+                    sails.log.verbose('- Imported into sdc_appointment');
+                    
+                    return SDCUserAppointment.importData(appointmentData.user_appointment);
+                })
+                .then(() => {
+                    sails.log.verbose('- Imported into sdc_user_appointment');
+                    
+                    return RelayData.importData('sdc', relayData);
+                })
+                .then(() => {
+                    sails.log.verbose('- Imported secure relay data');
+                    sails.log('Import complete');
+                })
+                .catch((err) => {
+                    sails.log.error('Import error', err);
+                });
+            }
+        });
+        
     }
 
 };
