@@ -323,10 +323,14 @@ module.exports = {
                         leaders: []
                     };
                     
+                    if (!sdcByRenID[renID]) {
+                        sails.log.warn('Warning: SDC user list is missing renID: ' + renID);
+                    }
+                    
                     var member = {};
                     memberFields.forEach((fieldName) => {
                         // Merge SDC info into member data
-                        if (sdcByRenID[renID][fieldName]) {
+                        if (sdcByRenID[renID] && sdcByRenID[renID][fieldName]) {
                             member[fieldName] = sdcByRenID[renID][fieldName];
                         }
                         // Merge worker & ren info into member data
