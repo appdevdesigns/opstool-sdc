@@ -6,6 +6,7 @@
  */
 
 var QRCode = require('qrcode');
+const deepLinkBase = 'https://sdc.appdevdesigns.net/ul?settings=';
 
 /**
  * Takes the results of a single-result SDCData.generateSDCData() call and 
@@ -51,7 +52,8 @@ module.exports = {
         var renID = req.param('ren_id');
         var authToken, sdcGUID, // SDC guid is different from ren guid
             userInfo = {}, 
-            relationships = [];
+            relationships = [],
+            deepLink;
         
         SDCData.findAuthTokenByRenID(renID)
         .then((results) => {
@@ -63,6 +65,7 @@ module.exports = {
             userInfo = results.users[0];
             relationships = results.relationships;
             var QRData = packageQRInfo(results);
+            deepLink = deepLinkBase + encodeURIComponent(QRData);
             
             return new Promise((resolve, reject) => {
                 QRCode.toDataURL(QRData, (err, image) => {
@@ -78,7 +81,8 @@ module.exports = {
                 image,
                 authToken,
                 userInfo,
-                relationships
+                relationships,
+                deepLink
             });
         })
         .catch((err) => {
@@ -121,7 +125,8 @@ module.exports = {
     emailInfo: function(req, res) {
         var renID = req.param('ren_id');
         var emailAddress, authToken, sdcGUID;
-        var QRData, urlQR, tokenQR, stringQR, base64QR;
+        var QRData, urlQR, tokenQR, base64QR;
+        var deepLink;
         
         SDCData.findEmailByRenID(renID)
         .then((result) => {
@@ -137,6 +142,7 @@ module.exports = {
             userInfo = results.users[0];
             relationships = results.relationships;
             QRData = packageQRInfo(results);
+            deepLink = deepLinkBase + encodeURIComponent(QRData);
             
             return new Promise((resolve, reject) => {
                 QRCode.toDataURL(QRData, (err, image) => {
@@ -144,17 +150,6 @@ module.exports = {
                     else {
                         urlQR = image;
                         base64QR = image.substring(22);
-                        resolve();
-                    }
-                });
-            });
-        })
-        .then(() => {
-            return new Promise((resolve, reject) => {
-                QRCode.toString(QRData, (err, image) => {
-                    if (err) reject(err);
-                    else {
-                        stringQR = image;
                         resolve();
                     }
                 });
@@ -187,8 +182,8 @@ module.exports = {
                     userInfo,
                     relationships,
                     tokenQR,      // token to use in renQrCode() route
-                    stringQR,     // ASCII QR code
                     cidQR: cid,   // CID for the QR code attachment
+                    deepLink,
                 },
                 attachments: [
                     {
