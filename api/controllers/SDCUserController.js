@@ -191,7 +191,7 @@ module.exports = {
         })
         .then(() => {
             var cidPDF = 'pdf@sdc.zteam.biz';
-            var cidRQ = 'qrcode@sdc.zteam.biz';
+            var cidQR = 'qrcode@sdc.zteam.biz';
             var qrcodeBuffer = Buffer.from(base64QR, 'base64');
             var attachments = [];
             
