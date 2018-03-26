@@ -5,8 +5,10 @@
  * @help        :: See http://links.sailsjs.org/docs/controllers
  */
 
+var fs = require('fs');
 var QRCode = require('qrcode');
 const deepLinkBase = 'https://sdc.appdevdesigns.net/ul?settings=';
+const pdfFilePath = 'data/opstool-sdc/quickstart.pdf';
 
 /**
  * Takes the results of a single-result SDCData.generateSDCData() call and 
@@ -127,6 +129,7 @@ module.exports = {
         var emailAddress, authToken, sdcGUID;
         var QRData, urlQR, tokenQR, base64QR;
         var deepLink;
+        var pdfBuffer;
         
         SDCData.findEmailByRenID(renID)
         .then((result) => {
@@ -172,8 +175,44 @@ module.exports = {
             });
         })
         .then(() => {
-            var cid = 'qrcode@sdc.zteam.biz';
+            return new Promise((resolve, reject) => {
+                fs.readFile(pdfFilePath, (err, data) => {
+                    if (err) {
+                        // PDF file not found
+                        pdfBuffer = null;
+                        //reject(err);
+                    }
+                    else {
+                        pdfBuffer = data;
+                    }
+                    resolve();
+                });
+            });
+        })
+        .then(() => {
+            var cidPDF = 'pdf@sdc.zteam.biz';
+            var cidRQ = 'qrcode@sdc.zteam.biz';
             var qrcodeBuffer = Buffer.from(base64QR, 'base64');
+            var attachments = [];
+            
+            // QR code image
+            attachments.push({
+                filename: 'qrcode.png',
+                content: qrcodeBuffer,
+                contents: qrcodeBuffer, // old version syntax
+                cid: cidQR
+            });
+            
+            // PDF
+            if (pdfBuffer) {
+                attachments.push({
+                    filename: 'quickstart.pdf',
+                    content: pdfBuffer,
+                    contents: pdfBuffer, // old version syntax
+                    cid: cidPDF
+                });
+            }
+            
             
             EmailNotifications.trigger('sdc.appinfo', {
                 to: [emailAddress],
@@ -182,17 +221,10 @@ module.exports = {
                     userInfo,
                     relationships,
                     tokenQR,      // token to use in renQrCode() route
-                    cidQR: cid,   // CID for the QR code attachment
+                    cidQR: cidQR,   // CID for the QR code attachment
                     deepLink,
                 },
-                attachments: [
-                    {
-                        filename: 'qrcode.png',
-                        content: qrcodeBuffer,
-                        contents: qrcodeBuffer, // old version syntax
-                        cid: cid
-                    }
-                ]
+                attachments: attachments
             })
             .done((html) => {
                 res.send(html || 'OK');
