@@ -12,6 +12,12 @@
 var async = require('async');
 var _ = require('lodash');
 
+setInterval(() => {
+    
+    SDCData.initAccounts();
+    
+}, 1000*60*60*3 /* every 3 hours */);
+
 module.exports = {
     
     tableName: 'sdc',
