@@ -103,6 +103,7 @@ module.exports = {
         .then((data) => {
             userData = data.users;
             
+            // Fetch outgoing relay data
             return RelayData.exportData('sdc');
         })
         .then((data) => {
@@ -189,6 +190,20 @@ module.exports = {
                 })
                 .then(() => {
                     sails.log.verbose('- Imported secure relay data');
+                    
+                    if (relayData && relayData.length > 0) {
+                        return RelayData.retrieveAllUserData('sdc');
+                    }
+                    else {
+                        return null;
+                    }
+                })
+                .then((retrievedData) => {
+                    if (retrievedData) return PublicServer.importPFS(retrievedData);
+                    else return null;
+                })
+                .then(() => {
+                    
                     sails.log('Import complete');
                 })
                 .catch((err) => {
@@ -197,6 +212,149 @@ module.exports = {
             }
         });
         
+    },
+    
+    
+    /**
+     * Import PFS data sent by the mobile app and save into AppBuilder objects.
+     *
+     * @param {object} data
+     *      The output from RelayData.retrieveAllUserData()
+     *      { <ren_id>: [...], <ren_id>: [...], ... }
+     * @return {Promise}
+     */
+    importPFS: function(data) {
+        return new Promise((resolve, reject) => {
+        
+            var objectives = [];
+            var adjustments = [];
+            var keyResults = [];
+            var progress = [];
+            
+            var pfsData = {
+            /*
+                <ren_id>: { 
+                    pfsData: {...},
+                    timestamp: <integer>
+                 },
+                ...
+            */
+            };
+            
+            Promise.resolve()
+            .then(() => {
+                if (typeof data != 'object') throw new TypeError();
+                
+                // Build the `pfsData` object.
+                // In case of multiple copies of PFS data per person, keep only
+                // the most recent one.
+                
+                // Iterate through the incoming relay data for each user, and
+                // find each user's most recent `pfsData` packet.
+                for (var renID in data) {
+                    var dataArray = data[renID];
+                    if (!Array.isArray(dataArray)) throw new TypeError();
+                    
+                    dataArray.forEach((packet) => {
+                        if (!packet.pfsData) {
+                            sails.log.warn('Unexpected SDC relay packet for ren: ' + renID, packet);
+                        }
+                        else if (!pfsData[renID] || pfsData[renID].timestamp < packet.timestamp) {
+                            pfsData[renID] = packet;
+                        }
+                    });
+                }
+                                
+                var tasks = [];
+                
+                // 1st pass of PFS data: create Objectives object entries
+                for (var renID in pfsData) {
+                    var renPFS = pfsData[renID].pfsData;
+                    for (var sdcGUID in renPFS) {
+                        var contactPFS = renPFS[sdcGUID];
+                        contactPFS.categories.forEach((c) => {
+                            c.objectives.forEach((o) => {
+                                var objective = {
+                                    Type: '',
+                                    Description: o.title,
+                                };
+                                
+                                if (c.title.match(/ministry/i)) {
+                                    objective.Type = 'Ministry';
+                                }
+                                else if (c.title.match(/personal/i)) {
+                                    objective.Type = 'Personal';
+                                }
+                                else {
+                                    objective.Type = 'Assignment';
+                                }
+                                
+                                tasks.push(
+                                    SdcPfsInterface.createObjective(objective)
+                                );
+                                
+                            });
+                        });
+                    }
+                }
+                
+                return Promise.all(tasks);
+            })
+            .then((results) => {
+                objectives = results;
+                var currentObjective = 0;
+                var tasks = [];
+                
+                // 2nd pass of PFS data: create Adjustments & KeyResults entries
+                for (var renID in pfsData) {
+                    var renPFS = pfsData[renID].pfsData;
+                    for (var sdcGUID in renPFS) {
+                        var contactPFS = renPFS[sdcGUID];
+                        contactPFS.categories.forEach((c) => {
+                            c.objectives.forEach((o) => {
+                                // Get the ID from the results of the earlier
+                                // createObjective() call.
+                                var objectiveID = objectives[currentObjective].id;
+                                var objectiveText = objectives[currentObjective].Description;
+                                
+                                o.changes && o.changes.forEach((changeText) => {
+                                    var adjustment = {
+                                        Description: changeText,
+                                        "Objective[id]": objectiveID,
+                                        "Objective[text]": objectiveText,
+                                    };
+                                    tasks.push(
+                                        SdcPfsInterface.createAdjustment(adjustment)
+                                    );
+                                });
+                                
+                                o.results && o.results.forEach((r) => {
+                                    var keyResult = {
+                                        Description: r.text,
+                                        "Objective[id]": objectiveID,
+                                        "Objective[text]": objectiveText,
+                                    };
+                                    tasks.push(
+                                        SdcPfsInterface.createKeyResult(keyResult)
+                                    );
+                                });
+                                
+                                currentObjective += 1;
+                            });
+                        });
+                    }
+                }
+                
+                return Promise.all(tasks);
+            })
+            .then((results) => {
+                adjustments = results;
+                var tasks = [];
+            })
+            .catch((err) => {
+                reject(err);
+            });
+        });
     }
 
 };
