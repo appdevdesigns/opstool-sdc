@@ -108,6 +108,15 @@ module.exports = {
         .then((data) => {
             relayData = data;
             
+            return RelayApplicationUser.findPublicKeys('sdc');
+        })
+        .then((pubkeysByUser) => {
+            // Merge RSA public keys into the `userData` array
+            userData.forEach((row) => {
+                var userGUID = row.id;
+                row.rsa_public_key = pubkeysByUser[userGUID];
+            });
+            
             return new Promise((resolve, reject) => {
                 request.post({
                     url: sdc.url + '/data_in',
