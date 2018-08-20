@@ -9,7 +9,7 @@ setInterval(() => {
         PublicServer.pull();
     }, 1000 * 30);
     
-}, 1000 * 60 * 60 * 1 /* once every hour */);
+}, 1000 * 60 * 60 * 1 );
 */
 
 module.exports = {
