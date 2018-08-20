@@ -101,11 +101,13 @@ module.exports = {
                     obj.Description AS obj_Description,
                     
                     me.user,
+                    me.id AS person_id,
                     myRen.ren_id AS my_renID,
                     myRen.ren_surname AS my_surname,
                     myRen.ren_givenname AS my_givenname,
                     myRen.ren_preferredname AS my_preferredname,
                     
+                    coach.id AS coach_person_id,
                     coachRen.ren_id AS coach_renID,
                     coachRen.ren_surname AS coach_surname,
                     coachRen.ren_givenname AS coach_givenname,
@@ -163,11 +165,13 @@ module.exports = {
                         pfs.Year = row.pfs_Year;
                         pfs.comments = row.pfs_comments;
                         
+                        myRen.person_id = row.person_id;
                         myRen.ren_id = row.my_renID;
                         myRen.ren_surname = row.my_surname;
                         myRen.ren_givenname = row.my_givenname;
                         myRen.ren_preferredname = row.my_preferredname;
                         
+                        coachRen.person_id = row.coach_person_id;
                         coachRen.ren_id = row.coach_renID;
                         coachRen.ren_surname = row.coach_surname;
                         coachRen.ren_givenname = row.coach_givenname;
