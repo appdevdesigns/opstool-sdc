@@ -1,5 +1,6 @@
 var request = require('request');
 
+/*
 setInterval(() => {
     
     PublicServer.push();
@@ -9,6 +10,7 @@ setInterval(() => {
     }, 1000 * 30);
     
 }, 1000 * 60 * 60 * 1 /* once every hour */);
+*/
 
 module.exports = {
     
