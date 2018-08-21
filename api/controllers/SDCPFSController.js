@@ -15,46 +15,49 @@ module.exports = {
     
     
     /**
-     * Fetches the current user's PFS data.
+     * GET /opstool-sdc/SDCPFS/myCurrentPFS/
+     *
+     * Fetches PFS data for current user & also their coachees.
+     *
+     * {
+     *      me: {
+     *          pfs: { ... },
+     *          myRen: { ... },
+     *          coachRen: { ... }
+     *      },
+     *      coachees: {
+     *          <coachee ren_id>: {
+     *              pfs: { ... },
+     *              myRen: { ... },
+     *              coachRen: { ... }
+     *          },
+     *          ...
+     *      }
+     * }
      */
     myCurrentPFS(req, res) {
         var renID = req.user.userModel.ren_id;
         if (renID) {
+            
+            var myData = {};
+            var coacheesData = {};
+            
+            // Fetch my PFS data
             SDCPFS.currentPFS(renID)
             .then((data) => {
-                res.send(data);
+                myData = data;
+                
+                // Find coachees renIDs
+                return SDCPFS.coachees(renID);
             })
-            .catch((err) => {
-                res.AD.error(err);
-            });
-        }
-        else {
-            res.send({});
-        }
-    },
-    
-    
-    /**
-     * Fetches the PFS data from all of the current user's coachees.
-     */
-    myCoacheesPFS(req, res) {
-        var myRenID = req.user.userModel.ren_id;
-        if (myRenID) {
-            var results = {
-            /*
-                <ren_id>: < myCurrentPFS() results >,
-                ...
-            */
-            };
             
-            
-            SDCPFS.coachees(myRenID)
+            // Fetch PFS data for each coachee
             .then((coacheeRenIDs) => {
                 return new Promise((resolve, reject) => {
-                    async.eachSeries(coachRenIDs, (renID, next) => {
+                    async.eachSeries(coacheeRenIDs, (renID, next) => {
                         SDCPFS.currentPFS(renID)
                         .then((data) => {
-                            results[renID] = data;
+                            coacheesData[renID] = data;
                             next();
                         })
                         .catch((err) => {
@@ -69,18 +72,22 @@ module.exports = {
                     });
                 });
             })
+            
             .then(() => {
-                res.send(results);
+                res.send({
+                    me: myData,
+                    coachees: coacheesData
+                });
             })
             .catch((err) => {
                 res.AD.error(err);
             });
-            
         }
         else {
             res.send({});
         }
-    }
+    },
     
+        
 };
 
