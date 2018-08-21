@@ -52,7 +52,7 @@ module.exports = {
             .then((coacheeRenIDs) => {
                 return new Promise((resolve, reject) => {
                     async.eachSeries(coachRenIDs, (renID, next) => {
-                        this.myCurrentPFS(renID)
+                        SDCPFS.currentPFS(renID)
                         .then((data) => {
                             results[renID] = data;
                             next();
