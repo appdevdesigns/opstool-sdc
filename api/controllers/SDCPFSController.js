@@ -3,6 +3,7 @@
  *
  */
 
+var async = require('async');
 
 module.exports = {
 
@@ -31,6 +32,55 @@ module.exports = {
             res.send({});
         }
     },
+    
+    
+    /**
+     * Fetches the PFS data from all of the current user's coachees.
+     */
+    myCoacheesPFS(req, res) {
+        var myRenID = req.user.userModel.ren_id;
+        if (myRenID) {
+            var results = {
+            /*
+                <ren_id>: < myCurrentPFS() results >,
+                ...
+            */
+            };
+            
+            
+            SDCPFS.coachees(myRenID)
+            .then((coacheeRenIDs) => {
+                return new Promise((resolve, reject) => {
+                    async.eachSeries(coachRenIDs, (renID, next) => {
+                        this.myCurrentPFS(renID)
+                        .then((data) => {
+                            results[renID] = data;
+                            next();
+                        })
+                        .catch((err) => {
+                            next(err);
+                        });
+                    }, (err) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve();
+                        }
+                    });
+                });
+            })
+            .then(() => {
+                res.send(results);
+            })
+            .catch((err) => {
+                res.AD.error(err);
+            });
+            
+        }
+        else {
+            res.send({});
+        }
+    }
     
 };
 

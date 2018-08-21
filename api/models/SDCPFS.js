@@ -238,6 +238,46 @@ module.exports = {
         });
     },
     
+
+    /**
+     * Finds the renIDs of the given person's coachees.
+     *
+     * @param {integer} renID
+     * @return {Promise}
+     *      Resolves with an array of integers
+     */
+    coachees(renID) {
+        return new Promise((resolve, reject) => {
+            SDCPFS.query(`
+
+                SELECT
+                    coachee.Profile AS ren_id
+                FROM
+                    AB_SDCNew_People AS me
+                    
+                    JOIN AB_SDCNew_PFS AS pfs
+                        ON pfs.Coach = me.id
+                        AND pfs.\`Current PFS\` = 1
+                    
+                    JOIN AB_SDCNew_People AS coachee
+                        ON pfs.Profile = coachee.id
+                        
+                WHERE
+                    me.Profile = ?
+                                    
+            `, [renID], (err, list) => {
+                if (err) reject(err);
+                else {
+                    var result = [];
+                    list.forEach((row) => {
+                        result.push(row.ren_id);
+                    });
+                    resolve(result);
+                }
+            });
+
+        });
+    },
     
 
 };
