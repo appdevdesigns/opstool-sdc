@@ -41,25 +41,30 @@ module.exports = {
      * @param {integer} renID
      * @return {Promise}
      *      {
-     *          pfs: { ... },
+     *          pfs: { 
+     *              objectives: {
+     *                  <objective id>: {
+     *                      Description: "...",
+     *                      results: {
+     *                          <results id>: {
+     *                              progress: {
+     *                                  <progress id>: { ... },
+     *                                  ...
+     *                              },
+     *                          },
+     *                          ...
+     *                      },
+     *                      adjustments: {
+     *                          <adjustments id>: { ... },
+     *                          ...
+     *                      }
+     *                  },
+     *                  ...
+     *              },
+     *              ...
+     *          },
      *          myRen: { ... },
      *          coachRen: { ... },
-     *          objectives: {
-     *              <objective id>: { ... },
-     *              ...
-     *          },
-     *          results: {
-     *              <results id>: { ... },
-     *              ...
-     *          },
-     *          progress: {
-     *              <progress id>: { ... },
-     *              ...
-     *          },
-     *          adjustments: {
-     *              <adjustments id>: { ... },
-     *              ...
-     *          }
      *      }
      */
     currentPFS(renID) {
@@ -160,6 +165,8 @@ module.exports = {
                     var results = {};
                     
                     list.forEach((row) => {
+                        // Parse out the separate objects
+                        
                         pfs.id = row.pfs_id;
                         pfs.uuid = row.pfs_uuid;
                         pfs.Year = row.pfs_Year;
@@ -222,14 +229,38 @@ module.exports = {
                         
                     });
                     
+                    // Connect objectives to pfs
+                    pfs.objectives = objectives;
+                    
+                    for (var objID in pfs.objectives) {
+                        var obj = pfs.objectives[objID];
+                        
+                        // Connect results to objectives
+                        for (var resID in results) {
+                            if (results[resID].Objectives == objID) {
+                                obj.results = results[resID];
+                            }
+                            
+                            // Connect progress to results
+                            for (var progID in progress) {
+                                if (progress[progID].KeyResults392 == resID) {
+                                    results[resID].progress = progress[progID];
+                                }
+                            }
+                        }
+                        
+                        // Connect adjustments to objectives
+                        for (var adjID in adjustments) {
+                            if (adjustments[adjID].Objective == objID) {
+                                obj.adjustments = adjustments[adjID];
+                            }
+                        }
+                    }
+                    
                     resolve({
                         pfs: pfs,
                         myRen: myRen,
                         coachRen: coachRen,
-                        objectives: objectives,
-                        progress: progress,
-                        adjustments: adjustments,
-                        results: results
                     });
                     
                 }
