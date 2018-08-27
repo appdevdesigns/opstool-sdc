@@ -16,11 +16,12 @@ module.exports = {
     },
     
     
-    // POST /opstool-sdc/SDCReport/feedback
+    // POST /opstool-sdc/SDCReports/feedback
     // 
     feedback: function(req, res) {
         var description = req.param('description');
         var imageDataUrl = req.param('screenshot'); // base64 data url
+        
         var attachments = [];
         var cid = uuid();
         var username = req.user.userModel.username;
@@ -31,7 +32,7 @@ module.exports = {
             attachments.push({
                 filename: 'screenshot.png',
                 contents: Buffer.from(imageBase64, 'base64'),
-                cid: uuid()
+                cid: cid
             });
         }
         
