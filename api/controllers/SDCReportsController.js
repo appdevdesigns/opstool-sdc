@@ -4,6 +4,7 @@
  * @description :: SDC reports
  * @help        :: See http://links.sailsjs.org/docs/controllers
  */
+var uuid = require('uuid/v4');
 
 module.exports = {
 
@@ -13,6 +14,46 @@ module.exports = {
  //       shortcuts: true,
  //       rest: true
     },
+    
+    
+    // POST /opstool-sdc/SDCReport/feedback
+    // 
+    feedback: function(req, res) {
+        var description = req.param('description');
+        var imageDataUrl = req.param('screenshot'); // base64 data url
+        var attachments = [];
+        var cid = uuid();
+        var username = req.user.userModel.username;
+        var email = req.user.userModel.email;
+        
+        if (imageDataUrl && imageDataUrl.length) {
+            var imageBase64 = imageDataUrl.substring(22);
+            attachments.push({
+                filename: 'screenshot.png',
+                contents: Buffer.from(imageBase64, 'base64'),
+                cid: uuid()
+            });
+        }
+        
+        EmailNotifications.send({
+            notify: {
+                id: 0,
+                emailSubject: 'Feedback',
+                fromName: username || 'Username not found',
+                fromEmail: email || 'noreply@example.com',
+            },
+            recipients: sails.config.sdc.feedbackRecipients,
+            body: description,
+            attachments: attachments
+        })
+        .fail((err) => {
+            res.AD.error(err);
+        })
+        .done(() => {
+            res.send('OK');
+        });
+    },
+    
     
     // For debugging
     userList: function(req, res) {
