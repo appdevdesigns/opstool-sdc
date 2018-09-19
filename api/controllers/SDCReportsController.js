@@ -59,6 +59,8 @@ module.exports = {
                     <tr>
                         <th>App version</th>
                         <td>${appVersion}</td>
+                    </tr>
+                    <tr>
                         <th>CodePush label</th>
                         <td>${codePushLabel}</td>
                     </tr>
@@ -78,7 +80,7 @@ module.exports = {
         EmailNotifications.send({
             notify: {
                 id: 0,
-                emailSubject: 'SDC Feedback',
+                emailSubject: 'ConneXted Feedback',
                 fromName: username || 'Username not found',
                 fromEmail: email || 'noreply@example.com',
             },
