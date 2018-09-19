@@ -21,12 +21,19 @@ module.exports = {
     feedback: function(req, res) {
         var description = req.param('description');
         var imageDataUrl = req.param('screenshot'); // base64 data url
+        var userAgent = req.param('userAgent') || '';
+        var route = req.param('route') || '';
+        var packageInfo = req.param('packageInfo') || {};
         
         var attachments = [];
         var cid = uuid();
         var username = req.user.userModel.username;
         var email = req.user.userModel.email;
         
+        var appVersion = packageInfo.version || '';
+        var codePushLabel = packageInfo.label || '';
+        
+        // Attach screenshot if available
         if (imageDataUrl && imageDataUrl.length) {
             var imageBase64 = imageDataUrl.substring(22);
             attachments.push({
@@ -36,15 +43,47 @@ module.exports = {
             });
         }
         
+        // Format email
+        var html = `
+        <html>
+            <body>
+                <table>
+                    <tr>
+                        <th>OpsPortal Username</th>
+                        <td>${username}</td>
+                    </tr>
+                    <tr>
+                        <th>App page</th>
+                        <td>${route}</td>
+                    </tr>
+                    <tr>
+                        <th>App version</th>
+                        <td>${appVersion}</td>
+                        <th>CodePush label</th>
+                        <td>${codePushLabel}</td>
+                    </tr>
+                    <tr>
+                        <th>Useragent</th>
+                        <td>${userAgent}</td>
+                    </tr>
+                </table>
+                
+                <h3>Note</h3>
+                <div>${description}</div>
+            </body>
+        </html>
+        `;
+        
+        
         EmailNotifications.send({
             notify: {
                 id: 0,
-                emailSubject: 'Feedback',
+                emailSubject: 'SDC Feedback',
                 fromName: username || 'Username not found',
                 fromEmail: email || 'noreply@example.com',
             },
             recipients: sails.config.sdc.feedbackRecipients,
-            body: description,
+            body: html,
             attachments: attachments
         })
         .fail((err) => {
