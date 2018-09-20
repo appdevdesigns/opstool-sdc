@@ -9,7 +9,10 @@
  * @module      :: Model
  */
 
-var async = require('async');
+// Seems that the global `async` from Sails is more up to date than the one
+// returned by require().
+//var async = require('async');
+
 var _ = require('lodash');
 
 setInterval(() => {
@@ -579,6 +582,138 @@ module.exports = {
                 console.log(err);
                 reject(err);
             });
+        });
+    },
+    
+    
+    
+    /**
+     * Find coach assignments from the original SDC system, and replicate
+     * that in the new AppBuilder PFS system for users who have a current PFS
+     * entry.
+     *
+     * This is intended to be run manually from the Sails console.
+     * $ sails console --dontLift
+     * > SDCData.setCoachAssignments(true).then(console.log).catch(console.log)
+     *
+     * @param {boolean} [reallyDoIt]
+     *      By default, a dry run will be done and no data will be written.
+     *      Set this to true to really do it.
+     * @return {Promise}
+     */
+    setCoachAssignments: function(reallyDoIt=false) {
+        return new Promise((resolve, reject) => {
+            
+            var coachAssignments = {
+            /*
+                <coachee_ren_id>: <coach_ren_id>,
+                ...
+            */
+            };
+            
+            SDCData.fetchTeams()
+            .then((teams) => {
+                // Parse the results into a single dictionary of coach assignments
+                teams.forEach((team) => {
+                    var gcp = SDCData.generateCoachingPairs(team);
+                    gcp.forEach((item) => {
+                        if (item.coach) {
+                            var coachRenID = item.coach.ren_id;
+                            item.coachee.forEach((coachee) => {
+                                var coacheeRenID = coachee.ren_id;
+                                coachAssignments[coacheeRenID] = coachRenID;
+                            })
+                        }
+                    });
+                    
+                });
+                return null;
+            })
+            .then(() => {
+                // Filter out coachees who are already assigned
+                return new Promise((rs, rj) => {
+                    SDCPFS.query(`
+                        SELECT
+                            person.Profile AS coachee_ren_id,
+                            coach.Profile AS coach_ren_id
+                            
+                        FROM
+                            AB_SDCNew_PFS AS pfs
+                            JOIN AB_SDCNew_People AS person
+                                ON pfs.Profile = person.id
+                            JOIN AB_SDCNew_People AS coach
+                                ON pfs.Coach = coach.id
+                                
+                        WHERE
+                            pfs.\`Current PFS\` = 1
+                            
+                    `, [], (err, list) => {
+                        if (err) rj(err);
+                        else {
+                            list.forEach((row) => {
+                                if (row.coachee_ren_id && row.coach_ren_id) {
+                                    // This person already has a coach
+                                    delete coachAssignments[row.coachee_ren_id];
+                                }
+                            });
+                            rs();
+                        }
+                    });
+                });
+            })
+            .then((coaches) => {
+                // Assign coaches
+                return new Promise((rs, rj) => {
+                    async.eachOfSeries(coachAssignments, (coachRenID, coacheeRenID, next) => {
+                        console.log(`Assign coach ${coachRenID} to ${coacheeRenID}`);
+                        
+                        if (!reallyDoIt) {
+                            // Don't actually modify the data if doing a dry run
+                            return next();
+                        }
+                        
+                        SDCPFS.query(`
+                            UPDATE
+                                AB_SDCNew_PFS AS pfs
+                                JOIN AB_SDCNew_People AS person
+                                    ON pfs.Profile = person.id
+                                    AND pfs.\`Current PFS\` = 1
+                            
+                            SET
+                                pfs.Coach = (
+                                    SELECT id
+                                    FROM AB_SDCNew_People
+                                    WHERE Profile = ?
+                                )
+                                
+                            WHERE
+                                person.Profile = ?
+                            
+                        `, [coachRenID, coacheeRenID], (err) => {
+                            if (err) {
+                                console.log(
+                                    'Could not assign coach ' + coachRenID 
+                                    + ' to ' + coacheeRenID
+                                );
+                                next(err);
+                            }
+                            else next();
+                        });
+                        
+                    }, (err) => {
+                        if (err) rj(err);
+                        else rs();
+                    });
+                })
+            })
+            .then(() => {
+                resolve();
+            })
+            .catch((err) => {
+                console.log('Error while setting coach assignments', err);
+                reject(err);
+            });
+        
         });
     }
     
