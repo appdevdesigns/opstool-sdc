@@ -24,6 +24,7 @@ module.exports = {
         var userAgent = req.param('userAgent') || '';
         var route = req.param('route') || '';
         var packageInfo = req.param('packageInfo') || {};
+        var errorMessage = req.param('error') || ''; // screenshot error
         
         var attachments = [];
         var cid = uuid();
@@ -34,7 +35,8 @@ module.exports = {
         var codePushLabel = packageInfo.label || '';
         
         // Attach screenshot if available
-        if (imageDataUrl && imageDataUrl.length) {
+        var hasScreenshot = imageDataUrl && imageDataUrl.length;
+        if (hasScreenshot) {
             var imageBase64 = imageDataUrl.substring(22);
             attachments.push({
                 filename: 'screenshot.png',
@@ -43,57 +45,43 @@ module.exports = {
             });
         }
         
-        // Format email
-        var html = `
-        <html>
-            <body>
-                <table>
-                    <tr>
-                        <th>OpsPortal Username</th>
-                        <td>${username}</td>
-                    </tr>
-                    <tr>
-                        <th>App page</th>
-                        <td>${route}</td>
-                    </tr>
-                    <tr>
-                        <th>App version</th>
-                        <td>${appVersion}</td>
-                    </tr>
-                    <tr>
-                        <th>CodePush label</th>
-                        <td>${codePushLabel}</td>
-                    </tr>
-                    <tr>
-                        <th>Useragent</th>
-                        <td>${userAgent}</td>
-                    </tr>
-                </table>
-                
-                <h3>Note</h3>
-                <div>${description}</div>
-            </body>
-        </html>
-        `;
-        
-        
-        EmailNotifications.send({
-            notify: {
-                id: 0,
-                emailSubject: 'ConneXted Feedback',
-                fromName: username || 'Username not found',
-                fromEmail: email || 'noreply@example.com',
+        // Render email
+        sails.renderView(
+            'opstool-sdc/feedback', // .ejs
+            {
+                description, userAgent, route, appVersion, codePushLabel,
+                username, errorMessage, hasScreenshot,
+                layout: false,
             },
-            recipients: sails.config.sdc.feedbackRecipients,
-            body: html,
-            attachments: attachments
-        })
-        .fail((err) => {
-            res.AD.error(err);
-        })
-        .done(() => {
-            res.send('OK');
-        });
+            (err, html) => {
+                
+                if (err) {
+                    console.log('Unable to render feedback html', err);
+                    html = html || description;
+                }
+                
+                EmailNotifications.send({
+                    notify: {
+                        id: 0,
+                        emailSubject: 'ConneXted Feedback',
+                        fromName: username || 'Username not found',
+                        fromEmail: email || 'noreply@example.com',
+                    },
+                    recipients: sails.config.sdc.feedbackRecipients,
+                    body: html,
+                    attachments: attachments
+                })
+                .fail((err) => {
+                    console.log(err);
+                    res.AD.error(err);
+                })
+                .done(() => {
+                    res.send('OK');
+                });
+            }
+            
+        );
+        
     },
     
     

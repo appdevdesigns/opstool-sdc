@@ -1,0 +1,45 @@
+<html>
+    <body>
+        <table>
+            <tr>
+                <th>OpsPortal Username</th>
+                <td><%= username %></td>
+            </tr>
+            <tr>
+                <th>App page</th>
+                <td><%= route %></td>
+            </tr>
+            <tr>
+                <th>App version</th>
+                <td><%= appVersion %></td>
+            </tr>
+            <tr>
+                <th>CodePush label</th>
+                <td><%= codePushLabel %></td>
+            </tr>
+            <tr>
+                <th>Useragent</th>
+                <td><%= userAgent %></td>
+            </tr>
+            <tr>
+                <th>Screenshot taken?</th>
+                <td>
+                    <% if (hasScreenshot || errorMessage) { %>
+                        yes
+                    <% } else { %>
+                        no
+                    <% } %>
+                </td>
+            </tr>
+            <% if (errorMessage) { %>
+            <tr>
+                <th>Screenshot error</th>
+                <td><%= errorMessage %></td>
+            </tr>
+            <% } %>
+        </table>
+        
+        <h3>Note</h3>
+        <div><%= description %></div>
+    </body>
+</html>
