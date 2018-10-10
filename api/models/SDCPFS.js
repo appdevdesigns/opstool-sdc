@@ -100,11 +100,6 @@ module.exports = {
                     progress.Result AS progress_Result, -- numeric
                     progress.KeyResults392 AS progress_KeyResults392,
                     
-                    -- obj.*
-                    obj.id AS obj_id,
-                    obj.uuid AS obj_uuid,
-                    obj.Description AS obj_Description,
-                    
                     me.user,
                     me.id AS person_id,
                     myRen.ren_id AS my_renID,
@@ -217,16 +212,7 @@ module.exports = {
                                 KeyResults392: row.progress_KeyResults392,
                             }
                         }
-                        
-                        var objID = row.obj_id;
-                        if (objID) {
-                            objectives[objID] = {
-                                id: objID,
-                                uuid: row.obj_uuid,
-                                Description: row.obj_Description,
-                            }
-                        }
-                        
+                                                
                     });
                     
                     // Connect objectives to pfs
