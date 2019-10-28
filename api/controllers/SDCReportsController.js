@@ -16,6 +16,77 @@ module.exports = {
     },
     
     
+    // POST /opstool-sdc/SDCReports/feedback_v2
+    // 
+    feedback_v2: function(req, res) {
+        var description = req.param('description');
+        var imageFilename = req.param('filename') || '';
+        var imageData = req.param('screenshot'); // base64 image file
+        var userAgent = req.param('userAgent') || '';
+        var route = req.param('route') || '';
+        var history = req.param('history') || []; // page stack
+        var packageInfo = req.param('packageInfo') || {};
+        
+        var attachments = [];
+        var cid = uuid();
+        var username = req.user.userModel.username;
+        var email = req.user.userModel.email;
+        
+        var appVersion = packageInfo.version || '';
+        var codePushLabel = packageInfo.label || '';
+        
+        // Attach screenshot if available
+        var hasScreenshot = imageData && imageData.length;
+        if (hasScreenshot) {
+            attachments.push({
+                filename: imageFilename || 'screenshot.png',
+                contents: Buffer.from(imageData, 'base64'),
+                cid: cid
+            });
+        }
+        
+        // Render email
+        sails.renderView(
+            'opstool-sdc/feedback', // .ejs
+            {
+                description, userAgent, route, appVersion, codePushLabel,
+                username, history, hasScreenshot,
+                errorMessage: null,
+                layout: false,
+            },
+            (err, html) => {
+                
+                if (err) {
+                    console.log('Unable to render feedback html', err);
+                    html = html || description;
+                }
+                
+                EmailNotifications.send({
+                    notify: {
+                        id: 0,
+                        emailSubject: 'ConneXted Feedback',
+                        fromName: username || 'Username not found',
+                        fromEmail: email || 'noreply@example.com',
+                    },
+                    recipients: sails.config.sdc.feedbackRecipients,
+                    body: html,
+                    attachments: attachments
+                })
+                .fail((err) => {
+                    console.log(err);
+                    res.AD.error(err);
+                })
+                .done(() => {
+                    res.send('OK');
+                });
+            }
+            
+        );
+        
+    },
+    
+    
+    
     // POST /opstool-sdc/SDCReports/feedback
     // 
     feedback: function(req, res) {
@@ -51,6 +122,7 @@ module.exports = {
             {
                 description, userAgent, route, appVersion, codePushLabel,
                 username, errorMessage, hasScreenshot,
+                history: null,
                 layout: false,
             },
             (err, html) => {

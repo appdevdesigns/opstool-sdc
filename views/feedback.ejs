@@ -5,10 +5,17 @@
                 <th>OpsPortal Username</th>
                 <td><%= username %></td>
             </tr>
+            <% if (history && history.length > 1) { %>
+            <tr>
+                <th>App page stack</th>
+                <td><%= history.join(' > ') %></td>
+            </tr>
+            <% } else { %>
             <tr>
                 <th>App page</th>
                 <td><%= route %></td>
             </tr>
+            <% } %>
             <tr>
                 <th>App version</th>
                 <td><%= appVersion %></td>
